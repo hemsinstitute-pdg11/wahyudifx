@@ -79,7 +79,17 @@
    </article>
   </div>
  </section>
- <section class="section" id="tools"><div class="section-intro"><div><h2>Risk Management Practice Tools</h2><p>Use hypothetical values to understand calculations. These tools do not recommend trades.</p></div></div>
+
+ <section class="section" id="interactive-chart"><div class="section-intro"><div><h2>Interactive Chart Practice</h2><p>Explore a generated sample series and toggle common technical-analysis overlays. This is not live market data.</p></div><span class="level">DEMO DATA ONLY</span></div>
+  <article class="panel">
+   <div class="panel-head" style="flex-wrap:wrap"><div><h2>Sample FX Price Chart</h2><div class="muted">Illustrative OHLC candles · 30 sample periods</div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn-outline" id="toggleMA">Moving Average: OFF</button><button class="btn-outline" id="toggleSR">Support / Resistance: OFF</button><button class="btn-outline" id="toggleRSI">RSI Panel: OFF</button></div></div>
+   <div class="chartbox" style="height:290px"><svg id="practiceChart" viewBox="0 0 760 260" role="img" aria-label="Generated sample candlestick chart with optional moving average and support resistance overlays"></svg></div>
+   <div class="chart-legend"><span><i class="dot" style="background:#35d49a"></i>Bullish</span><span><i class="dot" style="background:#f27e86"></i>Bearish</span><span id="maLegend" style="display:none"><i class="dot" style="background:#e9ba69"></i>20-period SMA</span><span id="srLegend" style="display:none">— Support / Resistance</span></div>
+   <div id="rsiPanel" style="display:none;margin-top:12px"><div class="muted" style="margin-bottom:5px">Illustrative RSI-style momentum line (sample calculation)</div><div class="chartbox" style="height:100px"><svg id="rsiChart" viewBox="0 0 760 85" role="img" aria-label="Sample relative strength index line"></svg></div></div>
+   <div class="muted" style="margin-top:10px">Learning task: toggle each overlay and observe how it changes the same historical sample. A moving average and RSI are derived from past prices; neither predicts future price movement.</div>
+  </article>
+ </section>
+\n <section class="section" id="tools"><div class="section-intro"><div><h2>Risk Management Practice Tools</h2><p>Use hypothetical values to understand calculations. These tools do not recommend trades.</p></div></div>
   <div class="tool-grid">
    <article class="panel"><div class="panel-head"><h2>Risk-to-Reward Calculator</h2><span class="level">SIMULATION</span></div>
     <div class="field"><label for="entry">Hypothetical entry price</label><input id="entry" type="number" step="any" value="2350"></div>
@@ -124,5 +134,20 @@ $('candleQuiz').addEventListener('click',e=>{const b=e.target.closest('button');
 const key='wahyudifx-learning-journal-v1';function getNotes(){try{return JSON.parse(localStorage.getItem(key)||'[]')}catch{return []}}function renderNotes(){const list=$('journalList'),notes=getNotes();list.innerHTML='';if(!notes.length){list.innerHTML='<div class="muted">No notes yet. Add your first chart-study observation above.</div>';return}notes.slice().reverse().forEach(n=>{const row=document.createElement('div');row.className='journal-item';const left=document.createElement('div'),right=document.createElement('div'),strong=document.createElement('strong'),small=document.createElement('small');strong.textContent=n.symbol+' · '+n.timeframe;small.textContent=n.setup+' — '+n.outcome;left.append(strong,document.createElement('br'),small);right.textContent=n.date;row.append(left,right);list.append(row)})}
 $('journalForm').addEventListener('submit',e=>{e.preventDefault();const notes=getNotes();notes.push({symbol:$('symbol').value.trim(),timeframe:$('timeframe').value,setup:$('setup').value.trim(),outcome:$('outcome').value,date:new Date().toLocaleDateString('id-ID')});try{localStorage.setItem(key,JSON.stringify(notes));renderNotes();e.target.reset();notify('Journal note saved in this browser.')}catch{notify('Browser storage is unavailable.')}});$('clearJournal').addEventListener('click',()=>{if(confirm('Delete all locally saved journal notes from this browser?')){localStorage.removeItem(key);renderNotes();notify('Local journal cleared.')}});renderNotes();
 $('themeBtn').addEventListener('click',()=>{document.documentElement.style.setProperty('--blue',getComputedStyle(document.documentElement).getPropertyValue('--blue').trim()==='#58b8f2'?'#73d7cf':'#58b8f2');notify('Accent color changed.')});
-</script>
+
+const sampleCloses=[1.102,1.105,1.103,1.108,1.111,1.109,1.106,1.104,1.107,1.112,1.115,1.113,1.117,1.114,1.110,1.108,1.111,1.116,1.119,1.117,1.114,1.112,1.109,1.113,1.116,1.120,1.118,1.122,1.119,1.124];
+const candles=sampleCloses.map((c,i)=>({o:(i?sampleCloses[i-1]:c-.002)+(i%3-1)*.001,h:Math.max(c,(i?sampleCloses[i-1]:c))+.001+(i%4)*.00025,l:Math.min(c,(i?sampleCloses[i-1]:c))-.001-(i%3)*.0002,c}));
+let showMA=false,showSR=false,showRSI=false;
+function chartSvg(){const svg=$('practiceChart'),w=760,h=260,pad={l:18,r:15,t:12,b:20},min=Math.min(...candles.map(x=>x.l))-.001,max=Math.max(...candles.map(x=>x.h))+.001,px=i=>pad.l+i*(w-pad.l-pad.r)/(candles.length-1),py=v=>pad.t+(max-v)*(h-pad.t-pad.b)/(max-min);let out='';
+for(let j=0;j<5;j++){const y=pad.t+j*(h-pad.t-pad.b)/4;out+='<path d="M'+pad.l+' '+y+'H'+(w-pad.r)+'" stroke="#29445b" stroke-dasharray="3 5"/>'}
+candles.forEach((c,i)=>{const x=px(i),up=c.c>=c.o,color=up?'#35d49a':'#f27e86',top=py(Math.max(c.o,c.c)),bottom=py(Math.min(c.o,c.c));out+='<path d="M'+x+' '+py(c.h)+'V'+py(c.l)+'" stroke="'+color+'" stroke-width="2"/><rect x="'+(x-5)+'" y="'+top+'" width="10" height="'+Math.max(2,bottom-top)+'" rx="1" fill="'+color+'"/>'});
+if(showMA){const ma=candles.map((c,i)=>i<4?null:candles.slice(i-4,i+1).reduce((a,b)=>a+b.c,0)/5);let d='';ma.forEach((v,i)=>{if(v!==null)d+=(d?'L':'M')+px(i)+' '+py(v)+' '});out+='<path d="'+d+'" fill="none" stroke="#e9ba69" stroke-width="2.5"/>'}
+if(showSR){const resistance=Math.max(...candles.map(c=>c.h)),support=Math.min(...candles.map(c=>c.l));out+='<path d="M'+pad.l+' '+py(resistance)+'H'+(w-pad.r)+'" stroke="#a58bfa" stroke-width="1.5" stroke-dasharray="7 5"/><path d="M'+pad.l+' '+py(support)+'H'+(w-pad.r)+'" stroke="#58b8f2" stroke-width="1.5" stroke-dasharray="7 5"/><text x="'+(w-pad.r-4)+'" y="'+(py(resistance)-5)+'" fill="#c4b5fd" text-anchor="end" font-size="10">Sample high</text><text x="'+(w-pad.r-4)+'" y="'+(py(support)-5)+'" fill="#8ccfff" text-anchor="end" font-size="10">Sample low</text>'}
+svg.innerHTML=out}
+function rsiSvg(){const svg=$('rsiChart'),vals=[];for(let i=0;i<candles.length;i++){const start=Math.max(1,i-5);let gains=0,losses=0,n=0;for(let j=start;j<=i;j++){const d=candles[j].c-candles[j-1].c;if(d>0)gains+=d;else losses-=d;n++}const avgG=gains/(n||1),avgL=losses/(n||1);vals.push(avgL===0?100:100-100/(1+avgG/avgL))}let d='';vals.forEach((v,i)=>{const x=12+i*736/(vals.length-1),y=8+(100-v)*.69;d+=(i?'L':'M')+x+' '+y+' '});svg.innerHTML='<path d="M10 25H750M10 60H750" stroke="#496078" stroke-dasharray="4 4"/><path d="'+d+'" fill="none" stroke="#58b8f2" stroke-width="2.5"/><text x="12" y="15" fill="#92abc0" font-size="9">70</text><text x="12" y="78" fill="#92abc0" font-size="9">30</text>'}
+chartSvg();rsiSvg();
+$('toggleMA').addEventListener('click',()=>{showMA=!showMA;$('toggleMA').textContent='Moving Average: '+(showMA?'ON':'OFF');$('maLegend').style.display=showMA?'inline':'none';chartSvg()});
+$('toggleSR').addEventListener('click',()=>{showSR=!showSR;$('toggleSR').textContent='Support / Resistance: '+(showSR?'ON':'OFF');$('srLegend').style.display=showSR?'inline':'none';chartSvg()});
+$('toggleRSI').addEventListener('click',()=>{showRSI=!showRSI;$('toggleRSI').textContent='RSI Panel: '+(showRSI?'ON':'OFF');$('rsiPanel').style.display=showRSI?'block':'none'});
+\n</script>
 </body></html>
