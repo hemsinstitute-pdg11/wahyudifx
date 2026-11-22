@@ -11,7 +11,21 @@
 @media(max-width:1100px){.sidebar{width:210px}.main{margin-left:210px;padding:15px}.course-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:760px){.sidebar{transform:translateX(-100%);width:245px}.sidebar.open{transform:translateX(0)}.mobile-overlay.show{display:block;position:fixed;inset:0;background:#0008;z-index:15}.main{margin:0;padding:12px}.menu{display:block}.topbar{margin-bottom:20px}.welcome h1{font-size:20px}.date{display:none}.grid,.tool-grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr);gap:8px}.stat{padding:11px;min-height:88px}.stat-value{font-size:22px}.course-grid{grid-template-columns:1fr}.glossary{grid-template-columns:repeat(2,1fr)}.section-intro{margin-top:22px}}
 @media(max-width:390px){.glossary{grid-template-columns:1fr}.stat-icon{width:32px;height:32px}}
-</style>
+
+/* Professional product polish */
+:root{--bg:#071321;--side:#0a1929;--panel:#10243a;--panel2:#142d45;--line:#29445d;--text:#f4f8fc;--muted:#9aafc2;--blue:#62c2fa;--cyan:#5be0dc;--green:#42d7a0;--red:#ff8790;--shadow:0 18px 50px #02081270}
+body{font-family:'DM Sans',sans-serif;letter-spacing:.01em;background:radial-gradient(ellipse at 78% -14%,#245273 0,transparent 34%),linear-gradient(180deg,#081827 0,#071321 58%,#091827 100%)}
+.brand{font-size:18px;letter-spacing:-.7px}.brand-mark{box-shadow:0 0 0 5px #63c9ed12,0 8px 25px #38a9e855}
+.sidebar{box-shadow:12px 0 35px #02091422}.profile{background:linear-gradient(145deg,#1c405d,#10283e);box-shadow:inset 0 1px #ffffff0b}
+.nav a{font-weight:600}.nav a.active{box-shadow:inset 2px 0 #6bd4f4;background:linear-gradient(90deg,#24587899,#19375055)}
+.main{max-width:1760px;padding-top:20px}.topbar{backdrop-filter:blur(14px);box-shadow:0 12px 32px #02091435}.welcome h1{font-size:clamp(21px,2vw,28px);letter-spacing:-1px}.welcome p{font-size:12px}
+.stat,.panel,.course-card{box-shadow:0 8px 24px #0209141c}.stat{background:linear-gradient(145deg,#193752,#11283e)}.panel{background:linear-gradient(145deg,#142b42f2,#0e2134f5);box-shadow:0 12px 35px #02091422}
+.panel h2{letter-spacing:-.3px}.section-intro h2{letter-spacing:-.8px}.course-card{background:linear-gradient(150deg,#17334c,#102338)}.course-card p{min-height:58px}.btn,.course-row .btn{box-shadow:0 4px 14px #2e9fda25}.btn:focus-visible,.btn-outline:focus-visible,button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,summary:focus-visible{outline:2px solid #72d8ff;outline-offset:3px}
+.chartbox{box-shadow:inset 0 1px #ffffff08}.field input,.field select{transition:border-color .2s,box-shadow .2s}.field input:focus,.field select:focus{box-shadow:0 0 0 3px #58b8f222}
+#paperPositions .journal-item{align-items:center}.paper-metric{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #294257;font-size:11px}.paper-metric:last-child{border:0}.paper-actions{display:flex;gap:8px;flex-wrap:wrap}.paper-actions .btn,.paper-actions .btn-outline{min-width:105px}
+.section{scroll-margin-top:22px}.notice{max-width:850px;margin:28px auto 0;padding-top:17px;border-top:1px solid #1c344a}
+@media(max-width:760px){.main{padding:10px}.topbar{position:sticky;top:8px;z-index:10;backdrop-filter:blur(16px)}.welcome{padding:3px 2px}.panel{padding:14px}.section-intro h2{font-size:18px}}
+\n</style>
 </head>
 <body>
 <div class="mobile-overlay" id="overlay"></div>
@@ -20,7 +34,7 @@
  <div class="profile"><div class="avatar">W</div><strong>Trading Education</strong><small>Learn · Analyze · Practice</small></div>
  <div class="nav-label">LEARNING MENU</div>
  <nav class="nav">
-  <a class="active" href="#home"><span class="ico">▦</span>Dashboard</a><a href="#courses"><span class="ico">▤</span>Learning Paths</a><a href="#technical"><span class="ico">⌁</span>Technical Analysis</a><a href="#chart"><span class="ico">▥</span>Chart Lab</a><a href="#tools"><span class="ico">⚒</span>Risk Calculator</a><a href="#journal"><span class="ico">▧</span>Practice Journal</a><a href="#quiz"><span class="ico">✦</span>Knowledge Check</a><a href="#glossary"><span class="ico">Aa</span>Glossary</a>
+  <a class="active" href="#home"><span class="ico">▦</span>Dashboard</a><a href="#courses"><span class="ico">▤</span>Learning Paths</a><a href="#technical"><span class="ico">⌁</span>Technical Analysis</a><a href="#chart"><span class="ico">▥</span>Chart Lab</a><a href="#tools"><span class="ico">⚒</span>Risk Calculator</a><a href="#simulator"><span class="ico">◉</span>Paper Simulator</a><a href="#journal"><span class="ico">▧</span>Practice Journal</a><a href="#quiz"><span class="ico">✦</span>Knowledge Check</a><a href="#glossary"><span class="ico">Aa</span>Glossary</a>
  </nav>
  <div class="side-bottom">WAHYUDIFX ACADEMY<br>Public learning platform · v1.1<br>Educational use only</div>
 </aside>
@@ -104,7 +118,23 @@
    </article>
   </div>
  </section>
- <section class="section" id="journal"><div class="section-intro"><div><h2>Practice Journal</h2><p>Record observations from chart study or paper-trading exercises. Saved locally in this browser.</p></div><span class="level">LOCAL ONLY</span></div>
+
+ <section class="section" id="simulator"><div class="section-intro"><div><h2>Paper Trading Simulator</h2><p>Practice trade planning with virtual credits only. No broker connection, deposits, or real orders.</p></div><span class="level">VIRTUAL MODE</span></div>
+  <div class="tool-grid">
+   <article class="panel"><div class="panel-head"><div><h2>Demo Market</h2><div class="muted">Synthetic sample price · not a live quote</div></div><span class="level">SIMULATED</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:end;margin:12px 0"><div><div class="muted">DEMO / FX-01</div><div id="paperPrice" style="font:800 28px Manrope;color:#e9f5ff">1.08420</div></div><div class="stat-note">Sample price series</div></div>
+    <div class="chartbox" style="height:115px"><svg viewBox="0 0 500 100" width="100%" height="100%" aria-label="Synthetic demo price movement"><path d="M0 75 L35 67 L70 73 L105 50 L140 56 L175 35 L210 47 L245 28 L280 42 L315 23 L350 34 L385 15 L420 29 L455 10 L500 20" fill="none" stroke="#58b8f2" stroke-width="2.5"/><path d="M0 75 L35 67 L70 73 L105 50 L140 56 L175 35 L210 47 L245 28 L280 42 L315 23 L350 34 L385 15 L420 29 L455 10 L500 20 L500 100 L0 100Z" fill="#58b8f2" opacity=".08"/></svg></div>
+    <div class="field"><label for="paperUnits">Virtual units (educational quantity)</label><input id="paperUnits" type="number" min="1" max="1000" step="1" value="10"></div>
+    <div class="paper-actions"><button class="btn" id="paperBuy">Simulate Buy</button><button class="btn-outline" id="paperSell">Simulate Sell</button><button class="btn-outline" id="paperReset">Reset Demo</button></div>
+    <div class="muted" style="margin-top:10px">This simplified exercise records a virtual position at the displayed sample price. It does not model spreads, leverage, margin, or broker execution.</div>
+   </article>
+   <article class="panel"><div class="panel-head"><h2>Virtual Account</h2><span class="level">STARTING CREDIT 10,000</span></div>
+    <div class="paper-metric"><span>Virtual balance</span><strong id="paperBalance">10,000.00</strong></div><div class="paper-metric"><span>Open position</span><strong id="paperPosition">None</strong></div><div class="paper-metric"><span>Unrealized P/L</span><strong id="paperPnl">0.00</strong></div><div class="paper-metric"><span>Closed practice result</span><strong id="paperClosed">0.00</strong></div>
+    <div class="divider"></div><h2 style="font-size:12px">Practice history</h2><div id="paperPositions" class="journal-list"><div class="muted">No simulated activity yet.</div></div>
+   </article>
+  </div>
+ </section>
+\n <section class="section" id="journal"><div class="section-intro"><div><h2>Practice Journal</h2><p>Record observations from chart study or paper-trading exercises. Saved locally in this browser.</p></div><span class="level">LOCAL ONLY</span></div>
   <article class="panel"><form id="journalForm"><div class="journal-form">
    <div class="field"><label for="symbol">Instrument / chart</label><input id="symbol" maxlength="30" placeholder="Example: EURUSD demo chart" required></div>
    <div class="field"><label for="timeframe">Timeframe</label><select id="timeframe"><option>15 minutes</option><option>1 hour</option><option>4 hours</option><option>1 day</option><option>1 week</option></select></div>
@@ -149,5 +179,16 @@ chartSvg();rsiSvg();
 $('toggleMA').addEventListener('click',()=>{showMA=!showMA;$('toggleMA').textContent='Moving Average: '+(showMA?'ON':'OFF');$('maLegend').style.display=showMA?'inline':'none';chartSvg()});
 $('toggleSR').addEventListener('click',()=>{showSR=!showSR;$('toggleSR').textContent='Support / Resistance: '+(showSR?'ON':'OFF');$('srLegend').style.display=showSR?'inline':'none';chartSvg()});
 $('toggleRSI').addEventListener('click',()=>{showRSI=!showRSI;$('toggleRSI').textContent='RSI Panel: '+(showRSI?'ON':'OFF');$('rsiPanel').style.display=showRSI?'block':'none'});
+\n
+const paperKey='wahyudifx-paper-demo-v1';const paperStart=10000;let paperState={balance:paperStart,position:null,closed:0,history:[]};let paperPrice=1.08420;
+function loadPaper(){try{const v=JSON.parse(localStorage.getItem(paperKey)||'null');if(v&&typeof v.balance==='number')paperState=v}catch{}}
+function savePaper(){try{localStorage.setItem(paperKey,JSON.stringify(paperState))}catch{}}
+function fmt(v){return Number(v).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function renderPaper(){const p=paperState.position;const pnl=p?(paperPrice-p.entry)*p.units*(p.side==='BUY'?1:-1):0;$('paperPrice').textContent=paperPrice.toFixed(5);$('paperBalance').textContent=fmt(paperState.balance);$('paperPosition').textContent=p?p.side+' · '+p.units+' units @ '+p.entry.toFixed(5):'None';$('paperPnl').textContent=fmt(pnl);$('paperPnl').style.color=pnl>=0?'#42d7a0':'#ff8790';$('paperClosed').textContent=fmt(paperState.closed);const list=$('paperPositions');list.innerHTML='';if(!paperState.history.length){list.innerHTML='<div class="muted">No simulated activity yet.</div>';return}paperState.history.slice(-5).reverse().forEach(x=>{const row=document.createElement('div');row.className='journal-item';const a=document.createElement('span'),b=document.createElement('strong');a.textContent=x.side+' · '+x.units+' units';b.textContent=(x.pnl>=0?'+':'')+fmt(x.pnl);b.style.color=x.pnl>=0?'#42d7a0':'#ff8790';row.append(a,b);list.append(row)})}
+function paperOpen(side){if(paperState.position){notify('Close the current virtual position before opening another.');return}const units=Math.floor(Number($('paperUnits').value));if(!Number.isFinite(units)||units<1||units>1000){notify('Choose virtual units between 1 and 1,000.');return}paperState.position={side,units,entry:paperPrice};savePaper();renderPaper();notify('Virtual '+side+' position recorded.')}
+$('paperBuy').addEventListener('click',()=>paperOpen('BUY'));$('paperSell').addEventListener('click',()=>paperOpen('SELL'));
+const closePaper=document.createElement('button');closePaper.className='btn-outline';closePaper.id='paperClose';closePaper.textContent='Close virtual position';$('paperPositions').before(closePaper);closePaper.addEventListener('click',()=>{const p=paperState.position;if(!p){notify('There is no open virtual position.');return}const pnl=(paperPrice-p.entry)*p.units*(p.side==='BUY'?1:-1);paperState.balance+=pnl;paperState.closed+=pnl;paperState.history.push({side:p.side,units:p.units,pnl});paperState.position=null;savePaper();renderPaper();notify('Virtual position closed. Practice result: '+fmt(pnl))});
+$('paperReset').addEventListener('click',()=>{if(!confirm('Reset virtual balance and erase this browser’s paper-trading history?'))return;paperState={balance:paperStart,position:null,closed:0,history:[]};savePaper();renderPaper();notify('Demo account reset.')});
+loadPaper();renderPaper();
 \n</script>
 </body></html>
