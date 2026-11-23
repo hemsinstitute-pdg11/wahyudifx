@@ -29,7 +29,6 @@ let upstream = null;
 let reconnectTimer = null;
 let heartbeatTimer = null;
 let upstreamState = 'idle';
-let licenseGateBroadcast = false;
 
 function sendJson(client, payload) {
   if (client.readyState === WebSocket.OPEN) client.send(JSON.stringify(payload));
@@ -60,13 +59,10 @@ function connectUpstream() {
   if (upstream || !clients.size) return;
 
   if (process.env.TWELVE_DATA_PUBLIC_DISPLAY_APPROVED !== 'true' || !API_KEY) {
-    if (!licenseGateBroadcast) {
-      const message = process.env.TWELVE_DATA_PUBLIC_DISPLAY_APPROVED !== 'true'
-        ? 'Stream publik dikunci sampai hak display/redistribusi Twelve Data dikonfirmasi.'
-        : 'API key belum dipasang sebagai environment secret di server.';
-      broadcast({ event: 'status', status: 'disabled', retryable: false, message });
-      licenseGateBroadcast = true;
-    }
+    const message = process.env.TWELVE_DATA_PUBLIC_DISPLAY_APPROVED !== 'true'
+      ? 'Stream publik dikunci sampai hak display/redistribusi Twelve Data dikonfirmasi.'
+      : 'API key belum dipasang sebagai environment secret di server.';
+    broadcast({ event: 'status', status: 'disabled', retryable: false, message });
     return;
   }
 
