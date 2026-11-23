@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kota Trader 3D - Eksplorasi & Terbang</title>
+    <title>WahyudiFX | Kota Trader 3D — Market Data Simulation</title>
     <!-- Tailwind CSS untuk antarmuka HUD yang modern dan responsif -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Three.js r128 untuk rendering dunia 3D -->
@@ -128,11 +128,11 @@
 
             <!-- Tombol Kontrol Cepat & Sentimen Pasar -->
             <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
-                <button id="btn-pump" title="Picu Bull Market (Harga Naik)" class="btn-action hud-glass hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
-                    <span>🚀</span><span class="hidden sm:inline">Bull</span>
+                <button id="btn-pump" title="Skenario visual bullish — tidak mengubah harga pasar" class="btn-action hud-glass hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+                    <span>🚀</span><span class="hidden sm:inline">Bull demo</span>
                 </button>
-                <button id="btn-dump" title="Picu Bear Market (Harga Turun)" class="btn-action hud-glass hover:bg-rose-500/20 border-rose-500/40 text-rose-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
-                    <span>📉</span><span class="hidden sm:inline">Bear</span>
+                <button id="btn-dump" title="Skenario visual bearish — tidak mengubah harga pasar" class="btn-action hud-glass hover:bg-rose-500/20 border-rose-500/40 text-rose-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+                    <span>📉</span><span class="hidden sm:inline">Bear demo</span>
                 </button>
                 <button id="btn-sound" title="Suara Efek" class="btn-action hud-glass hover:bg-slate-700/60 text-slate-200 p-2 rounded-xl text-xs font-semibold">
                     🔇
@@ -141,6 +141,12 @@
                     ?
                 </button>
             </div>
+        </div>
+        <div class="max-w-7xl mx-auto w-full flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-2 text-[10px] sm:text-xs pointer-events-auto">
+            <span id="market-feed-status" class="rounded-full border border-amber-400/30 bg-amber-500/10 px-2.5 py-1 font-semibold text-amber-300">MENUNGGU SERVER DATA</span>
+            <span id="market-feed-updated" class="text-slate-400">Belum ada pembaruan</span>
+            <a href="https://twelvedata.com" target="_blank" rel="noopener noreferrer" class="text-cyan-300 underline underline-offset-2">Data provided by Twelve Data</a>
+            <span class="text-slate-500">Data edukasi • tanpa eksekusi transaksi</span>
         </div>
 
         <!-- Bar Teleportasi / Lokasi Cepat -->
@@ -287,13 +293,13 @@
 
         // --- DATA PASAR SIMULASI ---
         const marketAssets = [
-            { symbol: 'BTC/USD', price: 94250.00, change: +3.45 },
-            { symbol: 'ETH/USD', price: 3410.80, change: +2.12 },
-            { symbol: 'IHSG',    price: 7685.40,  change: +0.88 },
-            { symbol: 'EMAS',    price: 2740.20,  change: +1.15 },
-            { symbol: 'NVDA',    price: 148.60,   change: -0.94 },
-            { symbol: 'USD/IDR', price: 15620.00, change: -0.32 },
-            { symbol: 'SOL/USD', price: 218.50,   change: +5.67 }
+            { symbol: 'XAU/USD', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'EUR/USD', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'GBP/USD', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'USD/JPY', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'BTC/USD', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'ETH/USD', price: null, change: null, previousPrice: null, timestamp: null },
+            { symbol: 'XAG/USD', price: null, change: null, previousPrice: null, timestamp: null }
         ];
         let marketSentiment = 1; // 1 = Bullish, -1 = Bearish, 0 = Netral
 
@@ -460,18 +466,25 @@
                 for (let i = 0; i < 4; i++) {
                     const asset = marketAssets[i];
                     const y = 92 + i * 42;
-                    const isUp = asset.change >= 0;
+                    const hasChange = Number.isFinite(asset.change);
+                    const isUp = hasChange && asset.change >= 0;
+                    const priceText = Number.isFinite(asset.price)
+                        ? asset.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })
+                        : 'MENUNGGU DATA';
 
                     ctx.fillStyle = '#f8fafc';
                     ctx.font = 'bold 24px monospace';
                     ctx.fillText(asset.symbol, 26, y);
 
                     ctx.fillStyle = '#cbd5e1';
-                    ctx.fillText(asset.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 190, y);
+                    ctx.font = '22px monospace';
+                    ctx.fillText(priceText, 190, y);
 
-                    ctx.fillStyle = isUp ? '#10b981' : '#ef4444';
-                    const arrow = isUp ? '▲' : '▼';
-                    ctx.fillText(`${arrow} ${Math.abs(asset.change).toFixed(2)}%`, 365, y);
+                    ctx.fillStyle = hasChange ? (isUp ? '#10b981' : '#ef4444') : '#94a3b8';
+                    const arrow = hasChange ? (isUp ? '▲' : '▼') : '—';
+                    const changeText = hasChange ? `${arrow} ${Math.abs(asset.change).toFixed(3)}% tick` : 'MENUNGGU TICK';
+                    ctx.font = 'bold 17px monospace';
+                    ctx.fillText(changeText, 365, y);
                 }
                 texture.needsUpdate = true;
             }
@@ -1330,26 +1343,19 @@
             marketSentiment = direction;
             playTone(direction > 0 ? 'G5' : 'D4', '8n');
 
-            // Perbarui harga aset secara dramatis
-            marketAssets.forEach((asset) => {
-                const deltaPct = direction * (1.2 + Math.random() * 2.8);
-                asset.change = parseFloat((asset.change + deltaPct).toFixed(2));
-                asset.price = Math.max(1, asset.price * (1 + deltaPct / 100));
-            });
-
-            renderTopTickerUI();
-            billboardTextures.forEach((b) => b.update());
+            // Skenario ini hanya mengubah animasi/karakter. Harga feed aktual tidak disentuh.
+            // Tidak ada transaksi, order, atau sinyal beli/jual yang dibuat.
 
             // Buat seluruh Stick-Man bereaksi!
             stickMen.forEach((s) => {
                 s.celebrateTimer = 2.5;
                 s.profile.bullish = direction > 0;
-                s.profile.mood = direction > 0 ? 'Cuan Meledak! 🚀' : 'Waduh Koreksi! 📉';
+                s.profile.mood = direction > 0 ? 'Skenario bullish (demo)' : 'Skenario bearish (demo)';
 
                 // Ganti balon status di atas kepala
                 s.group.remove(s.badgeSprite);
                 const newBadge = createTraderBadgeSprite(
-                    direction > 0 ? `🚀 +${(1 + Math.random() * 5).toFixed(1)}%` : `📉 -${(1 + Math.random() * 4).toFixed(1)}%`,
+                    direction > 0 ? 'BULL SCENARIO' : 'BEAR SCENARIO',
                     direction > 0
                 );
                 newBadge.position.y = 2.95;
@@ -1358,36 +1364,117 @@
             });
         }
 
+        function formatMarketPrice(value) {
+            if (!Number.isFinite(value)) return 'MENUNGGU DATA';
+            return value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+        }
+
         function renderTopTickerUI() {
             const container = document.getElementById('top-ticker-container');
             if (!container) return;
 
-            // Duplikasi array agar animasi marquee berjalan tanpa putus
             const items = [...marketAssets, ...marketAssets];
-            container.innerHTML = items.map((a) => {
-                const isUp = a.change >= 0;
-                const colorClass = isUp ? 'text-emerald-400' : 'text-rose-400';
-                const arrow = isUp ? '▲' : '▼';
+            container.innerHTML = items.map((asset) => {
+                const hasChange = Number.isFinite(asset.change);
+                const isUp = hasChange && asset.change >= 0;
+                const colorClass = !hasChange ? 'text-slate-400' : (isUp ? 'text-emerald-400' : 'text-rose-400');
+                const arrow = !hasChange ? '—' : (isUp ? '▲' : '▼');
+                const changeText = hasChange ? `${arrow} ${Math.abs(asset.change).toFixed(3)}% tick` : 'menunggu tick';
                 return `
-                    <div class="flex items-center gap-1.5 whitespace-nowrap">
-                        <span class="font-bold text-white">${a.symbol}</span>
-                        <span class="text-slate-300">${a.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        <span class="${colorClass} font-bold">${arrow} ${Math.abs(a.change).toFixed(2)}%</span>
+                    <div class="flex items-center gap-1.5 whitespace-nowrap" title="Perubahan dibanding tick sebelumnya, bukan perubahan harian">
+                        <span class="font-bold text-white">${asset.symbol}</span>
+                        <span class="text-slate-200">${formatMarketPrice(asset.price)}</span>
+                        <span class="${colorClass} font-bold">${changeText}</span>
                     </div>
                 `;
             }).join('');
         }
 
-        // Pembaruan harga otomatis tiap 3.5 detik agar kota terasa hidup
-        setInterval(() => {
-            marketAssets.forEach((asset) => {
-                const microMove = (Math.random() - 0.48) * 0.45;
-                asset.change = parseFloat((asset.change + microMove).toFixed(2));
-                asset.price = Math.max(1, asset.price * (1 + microMove / 100));
-            });
+        function setMarketFeedStatus(state, detail) {
+            const badge = document.getElementById('market-feed-status');
+            const updated = document.getElementById('market-feed-updated');
+            if (!badge) return;
+            const styles = {
+                connected: ['DATA STREAM AKTIF', 'border-emerald-400/40 bg-emerald-500/10 text-emerald-300'],
+                connecting: ['MENGHUBUNGKAN DATA', 'border-amber-400/30 bg-amber-500/10 text-amber-300'],
+                disabled: ['DATA LIVE BELUM DIAKTIFKAN', 'border-rose-400/30 bg-rose-500/10 text-rose-300'],
+                error: ['STREAM TERPUTUS', 'border-rose-400/30 bg-rose-500/10 text-rose-300'],
+                waiting: ['MENUNGGU SERVER DATA', 'border-amber-400/30 bg-amber-500/10 text-amber-300']
+            };
+            const view = styles[state] || styles.waiting;
+            badge.textContent = view[0];
+            badge.className = 'rounded-full border px-2.5 py-1 font-semibold ' + view[1];
+            if (updated && detail) updated.textContent = detail;
+        }
+
+        function applyMarketPrice(message) {
+            const asset = marketAssets.find((item) => item.symbol === message.symbol);
+            const price = Number(message.price);
+            if (!asset || !Number.isFinite(price) || price <= 0) return;
+
+            asset.change = Number.isFinite(asset.price) && asset.price > 0
+                ? ((price - asset.price) / asset.price) * 100
+                : null;
+            asset.previousPrice = asset.price;
+            asset.price = price;
+            asset.timestamp = Number(message.timestamp) || Date.now() / 1000;
+
             renderTopTickerUI();
-            billboardTextures.forEach((b) => b.update());
-        }, 3500);
+            billboardTextures.forEach((billboard) => billboard.update());
+
+            const updated = document.getElementById('market-feed-updated');
+            if (updated) updated.textContent = 'Tick terakhir: ' + new Date(asset.timestamp * 1000).toLocaleTimeString('id-ID');
+        }
+
+        function connectMarketStream() {
+            if (!window.location.host || !('WebSocket' in window)) {
+                setMarketFeedStatus('error', 'Gunakan server Node.js untuk menerima stream');
+                return;
+            }
+
+            let retryDelay = 3000;
+            let stopped = false;
+            const connect = () => {
+                if (stopped) return;
+                setMarketFeedStatus('connecting', 'Membuka koneksi market data…');
+                const scheme = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const socket = new WebSocket(`${scheme}//${window.location.host}/market-stream`);
+
+                socket.addEventListener('open', () => { retryDelay = 3000; });
+                socket.addEventListener('message', (event) => {
+                    let message;
+                    try { message = JSON.parse(event.data); } catch (_) { return; }
+
+                    if (message.event === 'status') {
+                        if (message.status === 'connected') {
+                            setMarketFeedStatus('connected', 'Menunggu tick dari Twelve Data…');
+                        } else if (message.status === 'disabled') {
+                            stopped = true;
+                            setMarketFeedStatus('disabled', message.message || 'Periksa API key dan persetujuan lisensi');
+                        } else if (message.status === 'error') {
+                            setMarketFeedStatus('error', message.message || 'Koneksi data mengalami kendala');
+                        }
+                        return;
+                    }
+
+                    if (message.event === 'price') applyMarketPrice(message);
+                    if (message.event === 'subscribe-status' && message.status !== 'ok') {
+                        setMarketFeedStatus('error', 'Sebagian simbol tidak berhasil di-subscribe');
+                    }
+                });
+
+                socket.addEventListener('close', () => {
+                    if (stopped) return;
+                    setMarketFeedStatus('error', 'Koneksi terputus; mencoba kembali…');
+                    window.setTimeout(connect, retryDelay);
+                    retryDelay = Math.min(retryDelay * 2, 30000);
+                });
+                socket.addEventListener('error', () => {
+                    setMarketFeedStatus('error', 'Server market stream tidak dapat dijangkau');
+                });
+            };
+            connect();
+        }
 
         /**
          * ============================================================================
@@ -1553,6 +1640,7 @@
         window.onload = function () {
             init();
             animate();
+            connectMarketStream();
         };
     </script>
 </body>
