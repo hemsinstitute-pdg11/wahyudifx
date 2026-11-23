@@ -1,27 +1,38 @@
-# WahyudiFX Academy
+# WahyudiFX — Kota Trader 3D
 
-A public, dark-mode trading education website focused on market fundamentals and technical analysis.
+A read-only educational 3D market-data visualization. It does not connect to a broker, accept orders, or execute transactions.
 
-## Features
-- Public learning paths from trading fundamentals to technical analysis and trading plans
-- Lessons on candlesticks, market structure, support/resistance, indicators, and chart patterns
-- Illustrative candlestick anatomy chart (not a live market feed)
-- Interactive risk-to-reward calculator and hypothetical risk estimator
-- Browser-local practice journal using localStorage
-- Search across lessons, course cards, and glossary
-- Responsive desktop and mobile layout
+## Market data
+Configured Twelve Data symbols: XAU/USD, EUR/USD, GBP/USD, USD/JPY, BTC/USD, ETH/USD, XAG/USD.
+
+The Node.js server keeps the provider API key private, maintains one upstream WebSocket connection per server process, and broadcasts approved price events to browser sessions.
+
+## Licensing gate
+**Live public display is disabled by default.** Do not set `TWELVE_DATA_PUBLIC_DISPLAY_APPROVED=true` until Twelve Data confirms in writing that the selected plan and market entitlements permit public display/redistribution of all requested instruments on this website, including exchange-specific requirements.
+
+Individual plans may be limited to personal/internal use. A public website may require a business plan and/or separate market-data permissions. Commodity coverage and licensing can differ by product. Confirm current terms directly with Twelve Data. Keep the visible "Data provided by Twelve Data" attribution when public display is authorized.
+
+## Environment variables
+- `TWELVE_DATA_API_KEY`: private key from Twelve Data.
+- `TWELVE_DATA_PUBLIC_DISPLAY_APPROVED`: leave false until written approval is received.
+
+Never put the API key in browser JavaScript, `index.html`, a committed `.env` file, or public build logs.
 
 ## Run locally
-Open `index.html` in a modern browser. No build step or package installation is required.
+1. Install Node.js 20+.
+2. Run `npm install`.
+3. Copy `.env.example` to `.env` and fill in the key if available.
+4. Keep the public-display approval flag false until licensed.
+5. Run `npm start` and open `http://localhost:3000`.
 
-## Publish with GitHub Pages
-1. Open **Settings → Pages** in this repository.
-2. Under **Build and deployment**, choose **Deploy from a branch**.
-3. Select branch **main** and folder **/(root)**, then save.
-4. Wait for deployment. GitHub will show the published URL in Pages settings.
+Health endpoint: `/health`. Browser WebSocket endpoint: `/market-stream`.
 
-## Notes
-- This is an educational website, not a broker or trade-execution platform.
-- Chart visuals and example values are simulated, not live market data.
-- Journal notes are stored in the visitor's current browser only; they are not synced to a server.
-- The site does not provide financial advice or buy/sell recommendations.
+## Deploy
+This requires a Node.js host with persistent WebSocket support; GitHub Pages alone cannot run the proxy. A Render blueprint is included in `render.yaml`. Configure environment variables in the hosting dashboard. Do not enable public display until approval is confirmed.
+
+## Data semantics
+- Ticker and billboard values come only from provider price events.
+- The "tick" percentage compares the latest event with the immediately previous event received in this browser session; it is not a daily change.
+- Missing prices remain "MENUNGGU DATA"; no placeholder prices are fabricated.
+- Bull/Bear buttons trigger visual teaching scenarios only and never modify market prices.
+- No broker integration, account balance, order routing, or trade execution is included.
