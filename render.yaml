@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: wahyudifx-market-city
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: TWELVE_DATA_API_KEY
+        sync: false
+      - key: TWELVE_DATA_PUBLIC_DISPLAY_APPROVED
+        value: "false"
