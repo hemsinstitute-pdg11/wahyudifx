@@ -4,7 +4,15 @@
   "private": true,
   "description": "Read-only Twelve Data market stream proxy for WahyudiFX 3D educational simulation",
   "main": "server.js",
-  "scripts": { "start": "node server.js", "check": "node --check server.js" },
-  "engines": { "node": ">=20" },
-  "dependencies": { "ws": "^8.18.3" }
+  "scripts": {
+    "start": "node server.js",
+    "check": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "ws": "^8.18.3",
+    "dotenv": "^16.4.7"
+  }
 }
