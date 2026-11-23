@@ -21,7 +21,7 @@ Never put the API key in browser JavaScript, `index.html`, a committed `.env` fi
 ## Run locally
 1. Install Node.js 20+.
 2. Run `npm install`.
-3. Copy `.env.example` to `.env` and fill in the key if available.
+3. Copy `.env.example` to `.env` and fill in the key if available; dotenv loads this file locally.
 4. Keep the public-display approval flag false until licensed.
 5. Run `npm start` and open `http://localhost:3000`.
 
