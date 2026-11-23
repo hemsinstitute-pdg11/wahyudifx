@@ -1,0 +1,1559 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kota Trader 3D - Eksplorasi & Terbang</title>
+    <!-- Tailwind CSS untuk antarmuka HUD yang modern dan responsif -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js r128 untuk rendering dunia 3D -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Tone.js untuk efek suara sintetis ringan -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #070b14;
+            font-family: 'Inter', sans-serif;
+            touch-action: none;
+        }
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            cursor: grab;
+        }
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .font-mono-tech {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Glassmorphism HUD */
+        .hud-glass {
+            background: rgba(11, 17, 32, 0.72);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+        }
+        .btn-action {
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-action:active {
+            transform: scale(0.94);
+        }
+        /* Animasi Ticker Berjalan */
+        @keyframes tickerScroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .ticker-track {
+            display: flex;
+            width: max-content;
+            animation: tickerScroll 28s linear infinite;
+        }
+        .ticker-track:hover {
+            animation-play-state: paused;
+        }
+        /* Virtual Joystick untuk Mobile/Mouse */
+        #joystick-zone {
+            position: relative;
+            width: 112px;
+            height: 112px;
+            border-radius: 9999px;
+            background: rgba(15, 23, 42, 0.65);
+            border: 2px solid rgba(56, 189, 248, 0.35);
+            backdrop-filter: blur(8px);
+            touch-action: none;
+        }
+        #joystick-knob {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 44px;
+            height: 44px;
+            margin-top: -22px;
+            margin-left: -22px;
+            border-radius: 9999px;
+            background: linear-gradient(135deg, #38bdf8, #10b981);
+            box-shadow: 0 0 16px rgba(56, 189, 248, 0.6);
+            pointer-events: none;
+            transition: transform 0.05s ease-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100">
+
+    <!-- Kanvas Utama 3D -->
+    <div id="canvas-container"></div>
+
+    <!-- HUD Atas: Live Market Ticker & Info Kota -->
+    <header class="fixed top-0 left-0 right-0 z-20 pointer-events-none p-2 sm:p-3 flex flex-col gap-2">
+        <div class="flex items-center justify-between gap-2 max-w-7xl mx-auto w-full">
+            <!-- Logo / Judul Kota -->
+            <div class="hud-glass rounded-2xl px-3.5 py-2 flex items-center gap-2.5 pointer-events-auto">
+                <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-500 flex items-center justify-center text-slate-950 font-extrabold text-sm shadow-lg shadow-emerald-500/20">
+                    3D
+                </div>
+                <div>
+                    <h1 class="text-xs sm:text-sm font-bold tracking-tight text-white leading-tight">KOTA TRADER 3D</h1>
+                    <p id="altitude-badge" class="text-[10px] sm:text-xs font-mono-tech text-cyan-400">Ketinggian: 2.5m (Jalan)</p>
+                </div>
+            </div>
+
+            <!-- Live Ticker Bursa -->
+            <div class="hud-glass rounded-2xl px-3 py-2 overflow-hidden flex-1 max-w-xl hidden md:block pointer-events-auto">
+                <div id="top-ticker-container" class="ticker-track font-mono-tech text-xs gap-6">
+                    <!-- Diisi secara dinamis oleh JS -->
+                </div>
+            </div>
+
+            <!-- Tombol Kontrol Cepat & Sentimen Pasar -->
+            <div class="flex items-center gap-1.5 sm:gap-2 pointer-events-auto">
+                <button id="btn-pump" title="Picu Bull Market (Harga Naik)" class="btn-action hud-glass hover:bg-emerald-500/20 border-emerald-500/40 text-emerald-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+                    <span>🚀</span><span class="hidden sm:inline">Bull</span>
+                </button>
+                <button id="btn-dump" title="Picu Bear Market (Harga Turun)" class="btn-action hud-glass hover:bg-rose-500/20 border-rose-500/40 text-rose-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1">
+                    <span>📉</span><span class="hidden sm:inline">Bear</span>
+                </button>
+                <button id="btn-sound" title="Suara Efek" class="btn-action hud-glass hover:bg-slate-700/60 text-slate-200 p-2 rounded-xl text-xs font-semibold">
+                    🔇
+                </button>
+                <button id="btn-help" title="Panduan Kontrol" class="btn-action hud-glass hover:bg-cyan-500/20 border-cyan-500/40 text-cyan-300 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-semibold">
+                    ?
+                </button>
+            </div>
+        </div>
+
+        <!-- Bar Teleportasi / Lokasi Cepat -->
+        <div class="flex items-center justify-center gap-1.5 sm:gap-2 flex-wrap pointer-events-auto">
+            <button data-preset="plaza" class="preset-btn btn-action hud-glass hover:bg-cyan-500/25 text-xs px-3 py-1.5 rounded-full text-slate-200 font-medium">
+                🏛️ Bursa Utama
+            </button>
+            <button data-preset="sky" class="preset-btn btn-action hud-glass hover:bg-cyan-500/25 text-xs px-3 py-1.5 rounded-full text-slate-200 font-medium">
+                🦅 Terbang Tinggi
+            </button>
+            <button data-preset="street" class="preset-btn btn-action hud-glass hover:bg-cyan-500/25 text-xs px-3 py-1.5 rounded-full text-slate-200 font-medium">
+                🚶 Jalan Trader
+            </button>
+            <button data-preset="follow" id="btn-follow-trader" class="btn-action hud-glass hover:bg-amber-500/25 border-amber-400/30 text-xs px-3 py-1.5 rounded-full text-amber-200 font-medium">
+                🎯 Ikuti Stick-Man
+            </button>
+        </div>
+    </header>
+
+    <!-- Kartu Inspeksi Trader (Muncul saat Stick-Man diklik) -->
+    <div id="trader-card" class="fixed top-28 right-3 sm:right-5 z-30 w-64 sm:w-72 hud-glass rounded-2xl p-4 hidden transition-all duration-200 border-cyan-400/40">
+        <div class="flex items-start justify-between mb-2">
+            <div class="flex items-center gap-2.5">
+                <div id="trader-avatar-dot" class="w-9 h-9 rounded-full bg-emerald-500/20 border border-emerald-400 flex items-center justify-center text-base">
+                    🧑‍💼
+                </div>
+                <div>
+                    <h3 id="trader-name" class="text-sm font-bold text-white">Budi Scalper</h3>
+                    <p id="trader-role" class="text-[11px] text-slate-400">Day Trader Saham & Kripto</p>
+                </div>
+            </div>
+            <button id="close-trader-card" class="text-slate-400 hover:text-white text-sm px-1.5 py-0.5 rounded-lg">✕</button>
+        </div>
+        <div class="bg-slate-950/60 rounded-xl p-2.5 my-2.5 font-mono-tech text-xs space-y-1.5 border border-white/5">
+            <div class="flex justify-between">
+                <span class="text-slate-400">Aset Favorit:</span>
+                <span id="trader-asset" class="text-cyan-300 font-bold">BTC/USDT</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Profit Hari Ini:</span>
+                <span id="trader-pnl" class="text-emerald-400 font-bold">+$1,420.50</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-400">Status:</span>
+                <span id="trader-mood" class="text-amber-300">Lagi Cuan 🚀</span>
+            </div>
+        </div>
+        <button id="btn-focus-selected" class="w-full btn-action bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-400/40 text-cyan-200 text-xs font-semibold py-2 rounded-xl">
+            Ikuti Trader Ini
+        </button>
+    </div>
+
+    <!-- Modal Panduan Singkat -->
+    <div id="help-modal" class="fixed inset-0 z-40 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="hud-glass rounded-3xl max-w-md w-full p-5 sm:p-6 border-cyan-500/30 space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <span>🕹️</span> Cara Jelajah & Terbang
+                </h2>
+                <button id="close-help" class="text-slate-400 hover:text-white text-lg px-2">✕</button>
+            </div>
+            <div class="space-y-2.5 text-xs sm:text-sm text-slate-300">
+                <div class="bg-slate-900/70 p-3 rounded-xl border border-white/5">
+                    <p class="font-semibold text-cyan-300 mb-1">👀 Arahkan Kamera (Super Mudah)</p>
+                    <p>Klik & geser (drag) mouse atau sentuh layar di mana saja untuk melihat ke segala arah 360°.</p>
+                </div>
+                <div class="bg-slate-900/70 p-3 rounded-xl border border-white/5">
+                    <p class="font-semibold text-emerald-300 mb-1">🚶 Bergerak & Berjalan</p>
+                    <p>Gunakan tombol <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-white">W A S D</kbd> / Panah Keyboard, atau gunakan <b>Joystick Virtual</b> di pojok kiri bawah.</p>
+                </div>
+                <div class="bg-slate-900/70 p-3 rounded-xl border border-white/5">
+                    <p class="font-semibold text-amber-300 mb-1">🦅 Terbang Naik & Turun</p>
+                    <p>Tekan <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-white">Spasi</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-white">E</kbd> untuk <b>Terbang Naik</b>, dan <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-white">Shift</kbd> / <kbd class="px-1.5 py-0.5 bg-slate-800 rounded text-white">Q</kbd> untuk <b>Turun</b>. Atau tekan tombol <b>Naik / Turun</b> di kanan bawah.</p>
+                </div>
+                <div class="bg-slate-900/70 p-3 rounded-xl border border-white/5">
+                    <p class="font-semibold text-purple-300 mb-1">🧑‍💼 Interaksi Stick-Man</p>
+                    <p>Klik pada orang-orang <b>Stick-Man</b> di kota untuk melihat profil trading mereka, atau tekan tombol <b>Bull / Bear</b> di atas untuk melihat reaksi seluruh kota!</p>
+                </div>
+            </div>
+            <button id="start-explore-btn" class="w-full btn-action bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold py-2.5 rounded-xl text-sm shadow-lg shadow-cyan-500/20">
+                Mulai Jelajahi Kota!
+            </button>
+        </div>
+    </div>
+
+    <!-- HUD Bawah: Joystick Kiri + Petunjuk Tengah + Kontrol Terbang Kanan -->
+    <footer class="fixed bottom-0 left-0 right-0 z-20 pointer-events-none p-3 sm:p-5 flex items-end justify-between">
+        <!-- Kiri Bawah: Joystick Virtual (Bisa dipakai di HP maupun klik-drag di PC) -->
+        <div class="flex flex-col items-center gap-1.5 pointer-events-auto">
+            <div id="joystick-zone" title="Geser untuk berjalan / terbang maju-mundur-samping">
+                <div id="joystick-knob"></div>
+            </div>
+            <span class="text-[10px] font-medium text-slate-400 bg-slate-950/60 px-2 py-0.5 rounded-full">Gerak / WASD</span>
+        </div>
+
+        <!-- Tengah Bawah: Petunjuk Singkat Desktop -->
+        <div class="hidden lg:flex items-center gap-3 hud-glass px-4 py-2 rounded-full text-xs text-slate-300 pointer-events-auto">
+            <span>🖱️ <b>Geser Layar:</b> Putar Kamera</span>
+            <span class="text-slate-600">|</span>
+            <span>⌨️ <b>WASD:</b> Jalan/Terbang</span>
+            <span class="text-slate-600">|</span>
+            <span>🚀 <b>Spasi / Shift:</b> Naik / Turun</span>
+            <span class="text-slate-600">|</span>
+            <span>🧑‍💼 <b>Klik Stick-Man:</b> Cek Portofolio</span>
+        </div>
+
+        <!-- Kanan Bawah: Kontrol Terbang Naik / Turun / Turbo -->
+        <div class="flex flex-col items-end gap-2 pointer-events-auto">
+            <div class="flex items-center gap-2">
+                <button id="btn-turbo" class="btn-action hud-glass border-amber-400/40 text-amber-300 px-3 py-2.5 rounded-2xl text-xs font-bold shadow-lg flex items-center gap-1" title="Tahan untuk Terbang Cepat (Ctrl)">
+                    <span>⚡</span> <span>Turbo</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="btn-fly-down" class="btn-action hud-glass hover:bg-cyan-500/25 border-cyan-400/40 text-cyan-200 w-14 h-14 rounded-2xl flex flex-col items-center justify-center shadow-lg active:bg-cyan-500/40">
+                    <span class="text-base leading-none">⬇️</span>
+                    <span class="text-[10px] font-bold mt-1">TURUN</span>
+                </button>
+                <button id="btn-fly-up" class="btn-action hud-glass hover:bg-emerald-500/25 border-emerald-400/40 text-emerald-200 w-14 h-14 rounded-2xl flex flex-col items-center justify-center shadow-lg active:bg-emerald-500/40">
+                    <span class="text-base leading-none">⬆️</span>
+                    <span class="text-[10px] font-bold mt-1">TERBANG</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /**
+         * ============================================================================
+         * KOTA TRADER 3D - APLIKASI SIMULASI & EKSPLORASI INTERAKTIF
+         * ============================================================================
+         * Fitur Utama:
+         * 1. Kota Finansial 3D lengkap dengan gedung pencakar langit, Bursa Efek Sentral,
+         *    grafik candlestick 3D raksasa, papan ticker LED dinamis, jalan raya, & drone.
+         * 2. Puluhan karakter Trader Stick-Man berartikulasi penuh (kepala, badan, lengan,
+         *    kaki, tablet/koper, dan balon status harga) yang berjalan & bereaksi terhadap pasar.
+         * 3. Kontrol kamera dan terbang bebas yang mulus (Mouse/Touch Drag + WASD + Joystick +
+         *    Terbang Naik/Turun tanpa batasan).
+         */
+
+        // --- VARIABEL GLOBAL SCENE & RENDERER ---
+        let scene, camera, renderer, raycaster, mouse;
+        let clock = new THREE.Clock();
+
+        // --- DATA PASAR SIMULASI ---
+        const marketAssets = [
+            { symbol: 'BTC/USD', price: 94250.00, change: +3.45 },
+            { symbol: 'ETH/USD', price: 3410.80, change: +2.12 },
+            { symbol: 'IHSG',    price: 7685.40,  change: +0.88 },
+            { symbol: 'EMAS',    price: 2740.20,  change: +1.15 },
+            { symbol: 'NVDA',    price: 148.60,   change: -0.94 },
+            { symbol: 'USD/IDR', price: 15620.00, change: -0.32 },
+            { symbol: 'SOL/USD', price: 218.50,   change: +5.67 }
+        ];
+        let marketSentiment = 1; // 1 = Bullish, -1 = Bearish, 0 = Netral
+
+        // --- KONTROL KAMERA & TERBANG ---
+        const player = {
+            position: new THREE.Vector3(0, 3.2, 36),
+            velocity: new THREE.Vector3(0, 0, 0),
+            yaw: 0,           // Rotasi horizontal (radian)
+            pitch: -0.06,     // Rotasi vertikal (radian)
+            targetYaw: 0,
+            targetPitch: -0.06,
+            baseSpeed: 22,
+            turboMultiplier: 2.3,
+            minHeight: 2.0,   // Ketinggian mata saat berjalan di trotoar
+            maxHeight: 260,   // Batas atas terbang di langit kota
+            followingTrader: null
+        };
+
+        // Status input keyboard & tombol layar
+        const keys = {
+            forward: false,
+            backward: false,
+            left: false,
+            right: false,
+            up: false,
+            down: false,
+            turbo: false
+        };
+
+        // Status drag kamera (Mouse & Sentuh)
+        let isDraggingCamera = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let pointerDownPos = { x: 0, y: 0 };
+
+        // Status Virtual Joystick
+        const joystick = {
+            active: false,
+            x: 0, // -1 sampai 1
+            y: 0  // -1 sampai 1
+        };
+
+        // --- KOLEKSI OBJEK DINAMIS DI DUNIA 3D ---
+        const stickMen = [];
+        const candleMeshes = [];
+        const flyingDrones = [];
+        const billboardTextures = [];
+        let centralHoloRing = null;
+        let centralCoinMesh = null;
+        let selectedTrader = null;
+
+        // --- SISTEM AUDIO SYNTH (TONE.JS) ---
+        let soundEnabled = false;
+        let synth = null;
+
+        function initAudio() {
+            if (!synth && typeof Tone !== 'undefined') {
+                synth = new Tone.PolySynth(Tone.Synth, {
+                    oscillator: { type: 'sine' },
+                    envelope: { attack: 0.02, decay: 0.15, sustain: 0.05, release: 0.3 }
+                }).toDestination();
+                synth.volume.value = -14;
+            }
+        }
+
+        function playTone(note, duration = '16n') {
+            if (!soundEnabled) return;
+            try {
+                if (Tone.context.state !== 'running') Tone.start();
+                initAudio();
+                if (synth) synth.triggerAttackRelease(note, duration);
+            } catch (e) {
+                // Abaikan jika browser memblokir audio sebelum interaksi
+            }
+        }
+
+        /**
+         * ============================================================================
+         * GENERATOR TEKSTUR PROSEDURAL (TANPA URL GAMBAR EKSTERNAL)
+         * ============================================================================
+         */
+        function createBuildingWindowTexture(baseColorHex, accentColorHex, rows = 16, cols = 8) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Latar dinding gedung
+            ctx.fillStyle = baseColorHex;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Garis struktural vertikal
+            ctx.fillStyle = 'rgba(0,0,0,0.35)';
+            for (let c = 0; c <= cols; c++) {
+                ctx.fillRect((c * canvas.width) / cols - 2, 0, 4, canvas.height);
+            }
+
+            // Jendela-jendela bercahaya
+            const padX = 6;
+            const padY = 6;
+            const cellW = canvas.width / cols;
+            const cellH = canvas.height / rows;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const rand = Math.random();
+                    if (rand > 0.32) {
+                        if (rand > 0.88) {
+                            ctx.fillStyle = accentColorHex; // Jendela kantor trading aktif
+                        } else if (rand > 0.6) {
+                            ctx.fillStyle = '#bae6fd'; // Cahaya biru muda
+                        } else {
+                            ctx.fillStyle = '#fef3c7'; // Cahaya hangat
+                        }
+                        ctx.fillRect(
+                            c * cellW + padX,
+                            r * cellH + padY,
+                            cellW - padX * 2,
+                            cellH - padY * 2
+                        );
+                    } else {
+                        ctx.fillStyle = '#0f172a';
+                        ctx.fillRect(
+                            c * cellW + padX,
+                            r * cellH + padY,
+                            cellW - padX * 2,
+                            cellH - padY * 2
+                        );
+                    }
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            return texture;
+        }
+
+        function createTickerBillboardTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            const texture = new THREE.CanvasTexture(canvas);
+
+            function update() {
+                // Latar layar LED
+                ctx.fillStyle = '#060c1a';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                // Bingkai neon
+                ctx.strokeStyle = marketSentiment >= 0 ? '#10b981' : '#ef4444';
+                ctx.lineWidth = 8;
+                ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+
+                // Header layar
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(12, 12, canvas.width - 24, 44);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 22px monospace';
+                ctx.fillText('BURSA EFEK KOTA TRADER - LIVE', 24, 41);
+
+                // Daftar harga 4 aset utama
+                for (let i = 0; i < 4; i++) {
+                    const asset = marketAssets[i];
+                    const y = 92 + i * 42;
+                    const isUp = asset.change >= 0;
+
+                    ctx.fillStyle = '#f8fafc';
+                    ctx.font = 'bold 24px monospace';
+                    ctx.fillText(asset.symbol, 26, y);
+
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillText(asset.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), 190, y);
+
+                    ctx.fillStyle = isUp ? '#10b981' : '#ef4444';
+                    const arrow = isUp ? '▲' : '▼';
+                    ctx.fillText(`${arrow} ${Math.abs(asset.change).toFixed(2)}%`, 365, y);
+                }
+                texture.needsUpdate = true;
+            }
+
+            update();
+            billboardTextures.push({ texture, update });
+            return texture;
+        }
+
+        function createTraderBadgeSprite(text, isPositive) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+
+            // Kapsul latar belakang
+            ctx.fillStyle = isPositive ? 'rgba(6, 78, 59, 0.88)' : 'rgba(127, 29, 29, 0.88)';
+            ctx.beginPath();
+            ctx.roundRect(16, 8, 224, 48, 24);
+            ctx.fill();
+
+            ctx.strokeStyle = isPositive ? '#34d399' : '#f87171';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+
+            // Teks status
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(text, 128, 33);
+
+            const tex = new THREE.CanvasTexture(canvas);
+            const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+            const sprite = new THREE.Sprite(mat);
+            sprite.scale.set(2.4, 0.6, 1);
+            return sprite;
+        }
+
+        /**
+         * ============================================================================
+         * PEMBANGUNAN KOTA 3D (GEDUNG, BURSA SENTRAL, JALAN, & MONUMEN GRAFIK)
+         * ============================================================================
+         */
+        function buildTraderCity() {
+            // 1. Lantai Dasar Kota (Aspal & Grid Metropolis)
+            const groundGeo = new THREE.PlaneGeometry(600, 600);
+            const groundMat = new THREE.MeshStandardMaterial({
+                color: 0x0b1120,
+                roughness: 0.85,
+                metalness: 0.2
+            });
+            const ground = new THREE.Mesh(groundGeo, groundMat);
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            // Grid jalan bercahaya halus
+            const gridHelper = new THREE.GridHelper(480, 48, 0x1e293b, 0x0f172a);
+            gridHelper.position.y = 0.02;
+            scene.add(gridHelper);
+
+            // 2. Plaza Utama "Bursa Efek Sentral" di Pusat Kota (0, 0, 0)
+            const plazaGeo = new THREE.CylinderGeometry(34, 35, 0.3, 32);
+            const plazaMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                roughness: 0.5,
+                metalness: 0.4
+            });
+            const plaza = new THREE.Mesh(plazaGeo, plazaMat);
+            plaza.position.y = 0.15;
+            scene.add(plaza);
+
+            // Cincin Neon di Lantai Plaza
+            const ringGeo = new THREE.RingGeometry(31, 32.5, 48);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x10b981,
+                side: THREE.DoubleSide
+            });
+            const plazaRing = new THREE.Mesh(ringGeo, ringMat);
+            plazaRing.rotation.x = -Math.PI / 2;
+            plazaRing.position.y = 0.32;
+            scene.add(plazaRing);
+
+            // 3. Monumen Grafik Candlestick 3D Raksasa di Tengah Plaza
+            const monumentBase = new THREE.Mesh(
+                new THREE.CylinderGeometry(7, 8.5, 1.2, 24),
+                new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.7, roughness: 0.2 })
+            );
+            monumentBase.position.y = 0.6;
+            scene.add(monumentBase);
+
+            // 10 Lilin Candlestick 3D yang bergerak naik-turun sesuai harga pasar!
+            const candleCount = 10;
+            for (let i = 0; i < candleCount; i++) {
+                const angle = (i / candleCount) * Math.PI * 2;
+                const radius = 4.5;
+                const isBull = i % 2 === 0;
+
+                const candleGroup = new THREE.Group();
+                candleGroup.position.set(Math.cos(angle) * radius, 2.5, Math.sin(angle) * radius);
+
+                // Sumbu (Wick)
+                const wickMesh = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.08, 0.08, 4.5, 8),
+                    new THREE.MeshBasicMaterial({ color: isBull ? 0x34d399 : 0xf87171 })
+                );
+                candleGroup.add(wickMesh);
+
+                // Badan Lilin (Body)
+                const bodyMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.65, 2.2, 0.65),
+                    new THREE.MeshStandardMaterial({
+                        color: isBull ? 0x10b981 : 0xef4444,
+                        emissive: isBull ? 0x059669 : 0xdc2626,
+                        emissiveIntensity: 0.65
+                    })
+                );
+                candleGroup.add(bodyMesh);
+
+                scene.add(candleGroup);
+                candleMeshes.push({
+                    group: candleGroup,
+                    body: bodyMesh,
+                    wick: wickMesh,
+                    phase: i * 0.7,
+                    isBull
+                });
+            }
+
+            // Koin Emas Raksasa Berputar di Puncak Monumen
+            const coinGeo = new THREE.CylinderGeometry(2.6, 2.6, 0.55, 32);
+            const coinMat = new THREE.MeshStandardMaterial({
+                color: 0xfbbf24,
+                emissive: 0xd97706,
+                emissiveIntensity: 0.45,
+                metalness: 0.85,
+                roughness: 0.15
+            });
+            centralCoinMesh = new THREE.Mesh(coinGeo, coinMat);
+            centralCoinMesh.rotation.z = Math.PI / 2;
+            centralCoinMesh.position.set(0, 9.5, 0);
+            scene.add(centralCoinMesh);
+
+            // Cincin Hologram Mengelilingi Koin
+            centralHoloRing = new THREE.Mesh(
+                new THREE.TorusGeometry(4.2, 0.1, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+            );
+            centralHoloRing.position.set(0, 9.5, 0);
+            centralHoloRing.rotation.x = Math.PI / 3;
+            scene.add(centralHoloRing);
+
+            // 4. Layar Billboard LED Raksasa Menghadap ke Plaza
+            const billboardPositions = [
+                { x: 0, y: 14, z: -38, ry: 0 },
+                { x: 38, y: 14, z: 0, ry: -Math.PI / 2 },
+                { x: -38, y: 14, z: 0, ry: Math.PI / 2 }
+            ];
+
+            billboardPositions.forEach((pos) => {
+                const screenTex = createTickerBillboardTexture();
+                const screenMat = new THREE.MeshBasicMaterial({ map: screenTex });
+                const screenMesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 9), screenMat);
+                screenMesh.position.set(pos.x, pos.y, pos.z);
+                screenMesh.rotation.y = pos.ry;
+                scene.add(screenMesh);
+
+                // Tiang penyangga layar
+                const pillar = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.2, pos.y - 4, 1.2),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b })
+                );
+                pillar.position.set(pos.x, (pos.y - 4) / 2, pos.z);
+                scene.add(pillar);
+            });
+
+            // 5. Gedung Pencakar Langit Finansial (Blok Kota di Sekeliling Plaza)
+            const buildingPalettes = [
+                { base: '#0f172a', accent: '#10b981', neon: 0x10b981 },
+                { base: '#111827', accent: '#38bdf8', neon: 0x38bdf8 },
+                { base: '#1e1b4b', accent: '#f59e0b', neon: 0xf59e0b },
+                { base: '#090d16', accent: '#ef4444', neon: 0xef4444 }
+            ];
+
+            const blockCoords = [];
+            for (let gx = -3; gx <= 3; gx++) {
+                for (let gz = -3; gz <= 3; gz++) {
+                    // Kosongkan area tengah untuk Plaza Bursa Utama
+                    if (Math.abs(gx) <= 1 && Math.abs(gz) <= 1) continue;
+                    blockCoords.push({ x: gx * 56, z: gz * 56 });
+                }
+            }
+
+            blockCoords.forEach((blk, idx) => {
+                // Setiap blok berisi 1-2 menara finansial
+                const numTowers = (idx % 2 === 0) ? 2 : 1;
+                for (let t = 0; t < numTowers; t++) {
+                    const palette = buildingPalettes[(idx + t) % buildingPalettes.length];
+                    const width = 16 + ((idx * 7 + t * 5) % 12);
+                    const depth = 16 + ((idx * 11 + t * 3) % 12);
+                    const height = 38 + ((idx * 19 + t * 23) % 85);
+
+                    const offsetX = numTowers === 2 ? (t === 0 ? -11 : 11) : 0;
+                    const offsetZ = numTowers === 2 ? (t === 0 ? -6 : 6) : 0;
+
+                    const bx = blk.x + offsetX;
+                    const bz = blk.z + offsetZ;
+
+                    const winTex = createBuildingWindowTexture(
+                        palette.base,
+                        palette.accent,
+                        Math.floor(height / 3.5),
+                        Math.floor(width / 2.2)
+                    );
+
+                    const bMat = new THREE.MeshStandardMaterial({
+                        map: winTex,
+                        roughness: 0.35,
+                        metalness: 0.6
+                    });
+                    const roofMat = new THREE.MeshStandardMaterial({
+                        color: 0x0f172a,
+                        metalness: 0.8,
+                        roughness: 0.2
+                    });
+
+                    const building = new THREE.Mesh(
+                        new THREE.BoxGeometry(width, height, depth),
+                        [bMat, bMat, roofMat, roofMat, bMat, bMat]
+                    );
+                    building.position.set(bx, height / 2, bz);
+                    scene.add(building);
+
+                    // Mahkota Neon di Atap Gedung (Terlihat indah saat terbang!)
+                    const crown = new THREE.Mesh(
+                        new THREE.BoxGeometry(width + 0.4, 0.7, depth + 0.4),
+                        new THREE.MeshBasicMaterial({ color: palette.neon })
+                    );
+                    crown.position.set(bx, height - 1.2, bz);
+                    scene.add(crown);
+
+                    // Antena Puncak untuk Gedung Tinggi
+                    if (height > 75) {
+                        const spire = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.15, 0.5, 16, 8),
+                            new THREE.MeshBasicMaterial({ color: palette.neon })
+                        );
+                        spire.position.set(bx, height + 8, bz);
+                        scene.add(spire);
+                    }
+                }
+            });
+
+            // 6. Kios / Meja Trading Terbuka di Sekitar Plaza
+            const kioskAngles = [0.6, 1.5, 2.4, 3.8, 4.7, 5.5];
+            kioskAngles.forEach((ang, idx) => {
+                const dist = 22;
+                const kx = Math.cos(ang) * dist;
+                const kz = Math.sin(ang) * dist;
+
+                const deskGroup = new THREE.Group();
+                deskGroup.position.set(kx, 0.3, kz);
+                deskGroup.rotation.y = -ang + Math.PI / 2;
+
+                // Meja melengkung futuristik
+                const desk = new THREE.Mesh(
+                    new THREE.BoxGeometry(4.5, 1.1, 1.4),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.6, roughness: 0.3 })
+                );
+                desk.position.y = 0.55;
+                deskGroup.add(desk);
+
+                // Strip neon meja
+                const strip = new THREE.Mesh(
+                    new THREE.BoxGeometry(4.6, 0.12, 1.45),
+                    new THREE.MeshBasicMaterial({ color: idx % 2 === 0 ? 0x10b981 : 0x38bdf8 })
+                );
+                strip.position.y = 0.95;
+                deskGroup.add(strip);
+
+                // 2 Monitor Trading di atas meja
+                [-1.1, 1.1].forEach((mx) => {
+                    const monitor = new THREE.Mesh(
+                        new THREE.BoxGeometry(1.3, 0.8, 0.08),
+                        new THREE.MeshBasicMaterial({ color: idx % 2 === 0 ? 0x34d399 : 0x38bdf8 })
+                    );
+                    monitor.position.set(mx, 1.55, 0);
+                    monitor.rotation.x = -0.15;
+                    deskGroup.add(monitor);
+                });
+
+                scene.add(deskGroup);
+            });
+
+            // 7. Drone Pengirim Data Terbang di Langit Kota
+            for (let d = 0; d < 12; d++) {
+                const droneGroup = new THREE.Group();
+                const body = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.7, 12, 12),
+                    new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.8, roughness: 0.2 })
+                );
+                body.scale.set(1.4, 0.5, 1.4);
+                droneGroup.add(body);
+
+                const beacon = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.28, 8, 8),
+                    new THREE.MeshBasicMaterial({ color: d % 2 === 0 ? 0x10b981 : 0x38bdf8 })
+                );
+                beacon.position.y = -0.35;
+                droneGroup.add(beacon);
+
+                const orbitRadius = 35 + (d * 14);
+                const altitude = 28 + (d * 9);
+                const startAngle = (d / 12) * Math.PI * 2;
+                droneGroup.position.set(
+                    Math.cos(startAngle) * orbitRadius,
+                    altitude,
+                    Math.sin(startAngle) * orbitRadius
+                );
+
+                scene.add(droneGroup);
+                flyingDrones.push({
+                    mesh: droneGroup,
+                    radius: orbitRadius,
+                    altitude: altitude,
+                    angle: startAngle,
+                    speed: (d % 2 === 0 ? 1 : -1) * (0.12 + (d % 4) * 0.04)
+                });
+            }
+        }
+
+        /**
+         * ============================================================================
+         * PEMBUATAN KARAKTER TRADER STICK-MAN 3D BERARTIKULASI
+         * ============================================================================
+         */
+        const traderProfiles = [
+            { name: 'Budi "Scalper"', role: 'Trader Kripto Harian', asset: 'BTC/USD', pnl: '+$1,840.00', mood: 'Cuan Deras 🚀', bullish: true },
+            { name: 'Siti DiamondHands', role: 'Investor Saham Bluechip', asset: 'IHSG', pnl: '+Rp 14.5 Jt', mood: 'Santai HODL 💎', bullish: true },
+            { name: 'Alex Whale', role: 'Manajer Hedge Fund', asset: 'NVDA', pnl: '-$420.50', mood: 'Nunggu Rebound 📊', bullish: false },
+            { name: 'Rina Forex', role: 'Analis Teknikal Emas', asset: 'EMAS', pnl: '+$960.20', mood: 'Breakout Valid! ✨', bullish: true },
+            { name: 'Dimas Margin', role: 'Trader Futures 20x', asset: 'SOL/USD', pnl: '+$3,120.00', mood: 'To The Moon! 🌕', bullish: true },
+            { name: 'Tari Swing', role: 'Swing Trader Komoditas', asset: 'ETH/USD', pnl: '-$185.00', mood: 'Pasang Stop Loss 🛡️', bullish: false },
+            { name: 'Hendra Algo', role: 'Bot Quant Developer', asset: 'USD/IDR', pnl: '+Rp 8.2 Jt', mood: 'Bot Jalan Mulus 🤖', bullish: true },
+            { name: 'Maya Chartist', role: 'Master Candlestick', asset: 'BTC/USD', pnl: '+$2,450.75', mood: 'Pola Bullish Flag 📈', bullish: true }
+        ];
+
+        function createStickManTrader(index, x, z) {
+            const profile = traderProfiles[index % traderProfiles.length];
+            const group = new THREE.Group();
+            group.position.set(x, 0.3, z);
+
+            // Warna garis stick-man (Putih bercahaya dengan aksen dasi/topi trader)
+            const stickColor = 0xf8fafc;
+            const accentColor = profile.bullish ? 0x10b981 : 0x38bdf8;
+            const stickMat = new THREE.MeshStandardMaterial({
+                color: stickColor,
+                emissive: 0x334155,
+                emissiveIntensity: 0.4,
+                roughness: 0.3
+            });
+            const accentMat = new THREE.MeshStandardMaterial({
+                color: accentColor,
+                emissive: accentColor,
+                emissiveIntensity: 0.5
+            });
+
+            // 1. Kepala Stick-Man (Bola)
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.32, 16, 16), stickMat);
+            head.position.y = 2.15;
+            group.add(head);
+
+            // Aksesori Kepala: Topi Visor Trader atau Antena Sinyal
+            if (index % 2 === 0) {
+                const visor = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.08, 0.45), accentMat);
+                visor.position.set(0, 2.28, 0.14);
+                group.add(visor);
+            } else {
+                const tie = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.45, 4), accentMat);
+                tie.rotation.x = Math.PI;
+                tie.position.set(0, 1.55, 0.12);
+                group.add(tie);
+            }
+
+            // 2. Badan / Torso Stick-Man (Silinder Ramping)
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.95, 10), stickMat);
+            torso.position.y = 1.4;
+            group.add(torso);
+
+            // 3. Lengan Kiri & Kanan (Dengan pivot di bahu agar bisa dianimasikan)
+            const leftArmPivot = new THREE.Group();
+            leftArmPivot.position.set(-0.14, 1.82, 0);
+            const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.78, 8), stickMat);
+            leftArm.position.y = -0.35;
+            leftArmPivot.add(leftArm);
+
+            // Beberapa stick-man memegang Tablet/HP Trading bercahaya!
+            if (index % 3 !== 0) {
+                const tablet = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.32, 0.22, 0.04),
+                    new THREE.MeshBasicMaterial({ color: profile.bullish ? 0x10b981 : 0xef4444 })
+                );
+                tablet.position.set(0.1, -0.68, 0.22);
+                tablet.rotation.x = -0.6;
+                leftArmPivot.add(tablet);
+            }
+            group.add(leftArmPivot);
+
+            const rightArmPivot = new THREE.Group();
+            rightArmPivot.position.set(0.14, 1.82, 0);
+            const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.78, 8), stickMat);
+            rightArm.position.y = -0.35;
+            rightArmPivot.add(rightArm);
+
+            // Sebagian membawa Koper Eksekutif
+            if (index % 3 === 0) {
+                const briefcase = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.14, 0.36, 0.48),
+                    new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.2 })
+                );
+                briefcase.position.set(0.06, -0.78, 0);
+                rightArmPivot.add(briefcase);
+            }
+            group.add(rightArmPivot);
+
+            // 4. Kaki Kiri & Kanan (Dengan pivot di pinggul untuk animasi berjalan)
+            const leftLegPivot = new THREE.Group();
+            leftLegPivot.position.set(-0.11, 0.95, 0);
+            const leftLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.92, 8), stickMat);
+            leftLeg.position.y = -0.45;
+            leftLegPivot.add(leftLeg);
+            group.add(leftLegPivot);
+
+            const rightLegPivot = new THREE.Group();
+            rightLegPivot.position.set(0.11, 0.95, 0);
+            const rightLeg = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.06, 0.92, 8), stickMat);
+            rightLeg.position.y = -0.45;
+            rightLegPivot.add(rightLeg);
+            group.add(rightLegPivot);
+
+            // 5. Hitbox Tak Terlihat agar Stick-Man mudah diklik oleh pengguna
+            const hitBox = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.65, 0.65, 2.7, 8),
+                new THREE.MeshBasicMaterial({ visible: false })
+            );
+            hitBox.position.y = 1.35;
+            group.add(hitBox);
+
+            // 6. Balon Status Trading di Atas Kepala
+            const badgeText = profile.bullish ? `▲ ${profile.asset}` : `▼ ${profile.asset}`;
+            const badgeSprite = createTraderBadgeSprite(badgeText, profile.bullish);
+            badgeSprite.position.y = 2.95;
+            group.add(badgeSprite);
+
+            scene.add(group);
+
+            // Pilih tujuan jalan acak di area plaza / trotoar kota
+            const targetAngle = Math.random() * Math.PI * 2;
+            const targetDist = 8 + Math.random() * 55;
+
+            const traderObj = {
+                id: index,
+                group,
+                hitBox,
+                head,
+                leftArmPivot,
+                rightArmPivot,
+                leftLegPivot,
+                rightLegPivot,
+                badgeSprite,
+                profile: { ...profile },
+                targetPos: new THREE.Vector3(Math.cos(targetAngle) * targetDist, 0.3, Math.sin(targetAngle) * targetDist),
+                walkSpeed: 2.2 + Math.random() * 1.8,
+                walkPhase: Math.random() * Math.PI * 2,
+                idleTimer: 0,
+                celebrateTimer: 0
+            };
+
+            hitBox.userData = { trader: traderObj };
+            stickMen.push(traderObj);
+        }
+
+        function spawnAllTraders() {
+            // Buat 42 Trader Stick-Man tersebar di Plaza Bursa Utama & jalanan kota
+            for (let i = 0; i < 42; i++) {
+                const angle = (i / 42) * Math.PI * 2 + (Math.random() * 0.3);
+                const radius = i < 24 ? (9 + Math.random() * 22) : (32 + Math.random() * 55);
+                const x = Math.cos(angle) * radius;
+                const z = Math.sin(angle) * radius;
+                createStickManTrader(i, x, z);
+            }
+        }
+
+        /**
+         * ============================================================================
+         * INISIALISASI SCENE, PENCAHAYAAN, & EVENT LISTENER
+         * ============================================================================
+         */
+        function init() {
+            const container = document.getElementById('canvas-container');
+
+            // Scene & Kabut Atmosfer Kota Malam/Senja Cyber
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x070c18);
+            scene.fog = new THREE.FogExp2(0x070c18, 0.0042);
+
+            // Kamera Perspektif dengan FOV luas untuk kenyamanan eksplorasi & terbang
+            camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.2, 650);
+            camera.rotation.order = 'YXZ'; // Penting agar kontrol yaw & pitch selalu lurus dan stabil!
+
+            // WebGL Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            container.appendChild(renderer.domElement);
+
+            // Raycaster untuk memilih/klik Stick-Man Trader
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Pencahayaan Kota
+            const hemiLight = new THREE.HemisphereLight(0x7dd3fc, 0x0f172a, 1.15);
+            scene.add(hemiLight);
+
+            const dirLight = new THREE.DirectionalLight(0xf8fafc, 1.1);
+            dirLight.position.set(60, 120, 45);
+            scene.add(dirLight);
+
+            // Cahaya aksen hijau & emas dari Bursa Utama
+            const plazaLight = new THREE.PointLight(0x10b981, 2.2, 70);
+            plazaLight.position.set(0, 12, 0);
+            scene.add(plazaLight);
+
+            // Bangun Kota & Karakter Stick-Man
+            buildTraderCity();
+            spawnAllTraders();
+            renderTopTickerUI();
+
+            // Pasang Semua Event Listener Kontrol
+            setupControls(container);
+
+            // Resize Handler Responsif
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onWindowResize() {
+            if (!camera || !renderer) return;
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        /**
+         * ============================================================================
+         * KONTROL KAMERA, TERBANG, JOYSTICK, & INTERAKSI UI
+         * ============================================================================
+         */
+        function setupControls(container) {
+            // 1. Kontrol Rotasi Kamera via Mouse Drag
+            container.addEventListener('mousedown', (e) => {
+                isDraggingCamera = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                pointerDownPos = { x: e.clientX, y: e.clientY };
+                player.followingTrader = null; // Lepas auto-follow saat pengguna mengarahkan kamera manual
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDraggingCamera) return;
+                const dx = e.clientX - dragStartX;
+                const dy = e.clientY - dragStartY;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+
+                const sensitivity = 0.0042;
+                player.targetYaw -= dx * sensitivity;
+                player.targetPitch -= dy * sensitivity;
+                player.targetPitch = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, player.targetPitch));
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (isDraggingCamera) {
+                    const moveDist = Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y);
+                    // Jika hanya klik singkat (bukan geser kamera), cek apakah mengklik Stick-Man Trader
+                    if (moveDist < 6) {
+                        checkTraderClick(e.clientX, e.clientY);
+                    }
+                }
+                isDraggingCamera = false;
+            });
+
+            // 2. Kontrol Rotasi Kamera via Sentuhan Layar (Touch)
+            let activeTouchId = null;
+            container.addEventListener('touchstart', (e) => {
+                if (e.touches.length > 0 && activeTouchId === null) {
+                    const t = e.touches[0];
+                    activeTouchId = t.identifier;
+                    isDraggingCamera = true;
+                    dragStartX = t.clientX;
+                    dragStartY = t.clientY;
+                    pointerDownPos = { x: t.clientX, y: t.clientY };
+                    player.followingTrader = null;
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchmove', (e) => {
+                if (!isDraggingCamera) return;
+                for (let i = 0; i < e.touches.length; i++) {
+                    const t = e.touches[i];
+                    if (t.identifier === activeTouchId) {
+                        const dx = t.clientX - dragStartX;
+                        const dy = t.clientY - dragStartY;
+                        dragStartX = t.clientX;
+                        dragStartY = t.clientY;
+
+                        const sensitivity = 0.0055;
+                        player.targetYaw -= dx * sensitivity;
+                        player.targetPitch -= dy * sensitivity;
+                        player.targetPitch = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, player.targetPitch));
+                        break;
+                    }
+                }
+            }, { passive: true });
+
+            container.addEventListener('touchend', (e) => {
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === activeTouchId) {
+                        const t = e.changedTouches[i];
+                        const moveDist = Math.hypot(t.clientX - pointerDownPos.x, t.clientY - pointerDownPos.y);
+                        if (moveDist < 10) {
+                            checkTraderClick(t.clientX, t.clientY);
+                        }
+                        activeTouchId = null;
+                        isDraggingCamera = false;
+                    }
+                }
+            });
+
+            // 3. Scroll Mouse untuk Naik / Turun Ketinggian dengan Cepat
+            container.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                player.followingTrader = null;
+                player.position.y -= e.deltaY * 0.035;
+                player.position.y = Math.max(player.minHeight, Math.min(player.maxHeight, player.position.y));
+            }, { passive: false });
+
+            // 4. Kontrol Keyboard (WASD, Panah, Spasi, Shift, Q, E)
+            window.addEventListener('keydown', (e) => {
+                const code = e.code;
+                if (code === 'KeyW' || code === 'ArrowUp') { keys.forward = true; player.followingTrader = null; }
+                if (code === 'KeyS' || code === 'ArrowDown') { keys.backward = true; player.followingTrader = null; }
+                if (code === 'KeyA' || code === 'ArrowLeft') { keys.left = true; player.followingTrader = null; }
+                if (code === 'KeyD' || code === 'ArrowRight') { keys.right = true; player.followingTrader = null; }
+                if (code === 'Space' || code === 'KeyE') { keys.up = true; player.followingTrader = null; }
+                if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyQ' || code === 'KeyC') { keys.down = true; player.followingTrader = null; }
+                if (code === 'ControlLeft' || code === 'ControlRight') { keys.turbo = true; }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const code = e.code;
+                if (code === 'KeyW' || code === 'ArrowUp') keys.forward = false;
+                if (code === 'KeyS' || code === 'ArrowDown') keys.backward = false;
+                if (code === 'KeyA' || code === 'ArrowLeft') keys.left = false;
+                if (code === 'KeyD' || code === 'ArrowRight') keys.right = false;
+                if (code === 'Space' || code === 'KeyE') keys.up = false;
+                if (code === 'ShiftLeft' || code === 'ShiftRight' || code === 'KeyQ' || code === 'KeyC') keys.down = false;
+                if (code === 'ControlLeft' || code === 'ControlRight') keys.turbo = false;
+            });
+
+            // 5. Virtual Joystick (Sentuh & Mouse)
+            const joyZone = document.getElementById('joystick-zone');
+            const joyKnob = document.getElementById('joystick-knob');
+            const maxRadius = 38;
+
+            function updateJoystickFromClient(clientX, clientY) {
+                const rect = joyZone.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist > maxRadius) {
+                    dx = (dx / dist) * maxRadius;
+                    dy = (dy / dist) * maxRadius;
+                }
+
+                joyKnob.style.transform = `translate(${dx}px, ${dy}px)`;
+                joystick.x = dx / maxRadius;
+                joystick.y = dy / maxRadius;
+                player.followingTrader = null;
+            }
+
+            function resetJoystick() {
+                joystick.active = false;
+                joystick.x = 0;
+                joystick.y = 0;
+                joyKnob.style.transform = 'translate(0px, 0px)';
+            }
+
+            joyZone.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                joystick.active = true;
+                updateJoystickFromClient(e.clientX, e.clientY);
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (joystick.active) updateJoystickFromClient(e.clientX, e.clientY);
+            });
+            window.addEventListener('mouseup', () => {
+                if (joystick.active) resetJoystick();
+            });
+
+            joyZone.addEventListener('touchstart', (e) => {
+                e.stopPropagation();
+                joystick.active = true;
+                updateJoystickFromClient(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            joyZone.addEventListener('touchmove', (e) => {
+                e.stopPropagation();
+                if (joystick.active) updateJoystickFromClient(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+            joyZone.addEventListener('touchend', (e) => {
+                e.stopPropagation();
+                resetJoystick();
+            });
+
+            // 6. Tombol Terbang Naik / Turun / Turbo di Layar
+            const bindHoldButton = (id, keyName) => {
+                const btn = document.getElementById(id);
+                const startHold = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    keys[keyName] = true;
+                    player.followingTrader = null;
+                };
+                const endHold = (e) => {
+                    e.preventDefault();
+                    keys[keyName] = false;
+                };
+                btn.addEventListener('mousedown', startHold);
+                btn.addEventListener('mouseup', endHold);
+                btn.addEventListener('mouseleave', endHold);
+                btn.addEventListener('touchstart', startHold, { passive: false });
+                btn.addEventListener('touchend', endHold, { passive: false });
+            };
+
+            bindHoldButton('btn-fly-up', 'up');
+            bindHoldButton('btn-fly-down', 'down');
+            bindHoldButton('btn-turbo', 'turbo');
+
+            // 7. Tombol Lokasi Cepat (Preset Kamera)
+            document.querySelectorAll('.preset-btn').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    const preset = btn.getAttribute('data-preset');
+                    player.followingTrader = null;
+                    playTone('E5');
+
+                    if (preset === 'plaza') {
+                        player.position.set(0, 3.5, 32);
+                        player.targetYaw = 0;
+                        player.targetPitch = -0.05;
+                    } else if (preset === 'sky') {
+                        player.position.set(0, 95, 115);
+                        player.targetYaw = 0;
+                        player.targetPitch = -0.58;
+                    } else if (preset === 'street') {
+                        player.position.set(18, 2.1, 18);
+                        player.targetYaw = Math.PI / 4;
+                        player.targetPitch = 0;
+                    }
+                });
+            });
+
+            // Tombol Ikuti Stick-Man Acak
+            document.getElementById('btn-follow-trader').addEventListener('click', () => {
+                if (stickMen.length === 0) return;
+                const randomTrader = stickMen[Math.floor(Math.random() * stickMen.length)];
+                player.followingTrader = randomTrader;
+                showTraderProfile(randomTrader);
+                playTone('G5');
+            });
+
+            // 8. Tombol Sentimen Pasar (Bull / Bear)
+            document.getElementById('btn-pump').addEventListener('click', () => triggerMarketEvent(1));
+            document.getElementById('btn-dump').addEventListener('click', () => triggerMarketEvent(-1));
+
+            // 9. Tombol Suara & Modal Panduan
+            const btnSound = document.getElementById('btn-sound');
+            btnSound.addEventListener('click', () => {
+                soundEnabled = !soundEnabled;
+                btnSound.textContent = soundEnabled ? '🔊' : '🔇';
+                if (soundEnabled) playTone('C5');
+            });
+
+            const helpModal = document.getElementById('help-modal');
+            document.getElementById('btn-help').addEventListener('click', () => helpModal.classList.remove('hidden'));
+            document.getElementById('close-help').addEventListener('click', () => helpModal.classList.add('hidden'));
+            document.getElementById('start-explore-btn').addEventListener('click', () => {
+                helpModal.classList.add('hidden');
+                playTone('C5');
+            });
+
+            // Tutup Kartu Inspeksi Trader
+            document.getElementById('close-trader-card').addEventListener('click', () => {
+                document.getElementById('trader-card').classList.add('hidden');
+                selectedTrader = null;
+            });
+            document.getElementById('btn-focus-selected').addEventListener('click', () => {
+                if (selectedTrader) {
+                    player.followingTrader = selectedTrader;
+                    playTone('A5');
+                }
+            });
+        }
+
+        /**
+         * ============================================================================
+         * INTERAKSI KLIK PADA TRADER STICK-MAN & SIMULASI PASAR
+         * ============================================================================
+         */
+        function checkTraderClick(clientX, clientY) {
+            mouse.x = (clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const hitBoxes = stickMen.map((s) => s.hitBox);
+            const intersects = raycaster.intersectObjects(hitBoxes, false);
+
+            if (intersects.length > 0) {
+                const clickedTrader = intersects[0].object.userData.trader;
+                if (clickedTrader) {
+                    showTraderProfile(clickedTrader);
+                    clickedTrader.celebrateTimer = 2.0; // Stick-man melambaikan tangan saat diklik!
+                    playTone('E5');
+                }
+            }
+        }
+
+        function showTraderProfile(trader) {
+            selectedTrader = trader;
+            const p = trader.profile;
+            document.getElementById('trader-name').textContent = p.name;
+            document.getElementById('trader-role').textContent = p.role;
+            document.getElementById('trader-asset').textContent = p.asset;
+
+            const pnlEl = document.getElementById('trader-pnl');
+            pnlEl.textContent = p.pnl;
+            pnlEl.className = p.bullish ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold';
+
+            document.getElementById('trader-mood').textContent = p.mood;
+            document.getElementById('trader-card').classList.remove('hidden');
+        }
+
+        function triggerMarketEvent(direction) {
+            marketSentiment = direction;
+            playTone(direction > 0 ? 'G5' : 'D4', '8n');
+
+            // Perbarui harga aset secara dramatis
+            marketAssets.forEach((asset) => {
+                const deltaPct = direction * (1.2 + Math.random() * 2.8);
+                asset.change = parseFloat((asset.change + deltaPct).toFixed(2));
+                asset.price = Math.max(1, asset.price * (1 + deltaPct / 100));
+            });
+
+            renderTopTickerUI();
+            billboardTextures.forEach((b) => b.update());
+
+            // Buat seluruh Stick-Man bereaksi!
+            stickMen.forEach((s) => {
+                s.celebrateTimer = 2.5;
+                s.profile.bullish = direction > 0;
+                s.profile.mood = direction > 0 ? 'Cuan Meledak! 🚀' : 'Waduh Koreksi! 📉';
+
+                // Ganti balon status di atas kepala
+                s.group.remove(s.badgeSprite);
+                const newBadge = createTraderBadgeSprite(
+                    direction > 0 ? `🚀 +${(1 + Math.random() * 5).toFixed(1)}%` : `📉 -${(1 + Math.random() * 4).toFixed(1)}%`,
+                    direction > 0
+                );
+                newBadge.position.y = 2.95;
+                s.badgeSprite = newBadge;
+                s.group.add(newBadge);
+            });
+        }
+
+        function renderTopTickerUI() {
+            const container = document.getElementById('top-ticker-container');
+            if (!container) return;
+
+            // Duplikasi array agar animasi marquee berjalan tanpa putus
+            const items = [...marketAssets, ...marketAssets];
+            container.innerHTML = items.map((a) => {
+                const isUp = a.change >= 0;
+                const colorClass = isUp ? 'text-emerald-400' : 'text-rose-400';
+                const arrow = isUp ? '▲' : '▼';
+                return `
+                    <div class="flex items-center gap-1.5 whitespace-nowrap">
+                        <span class="font-bold text-white">${a.symbol}</span>
+                        <span class="text-slate-300">${a.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span class="${colorClass} font-bold">${arrow} ${Math.abs(a.change).toFixed(2)}%</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Pembaruan harga otomatis tiap 3.5 detik agar kota terasa hidup
+        setInterval(() => {
+            marketAssets.forEach((asset) => {
+                const microMove = (Math.random() - 0.48) * 0.45;
+                asset.change = parseFloat((asset.change + microMove).toFixed(2));
+                asset.price = Math.max(1, asset.price * (1 + microMove / 100));
+            });
+            renderTopTickerUI();
+            billboardTextures.forEach((b) => b.update());
+        }, 3500);
+
+        /**
+         * ============================================================================
+         * LOOP ANIMASI UTAMA (PERGERAKAN KAMERA, TERBANG, & STICK-MAN)
+         * ============================================================================
+         */
+        function updatePlayerMovement(dt) {
+            // 1. Jika sedang mengikuti salah satu Stick-Man Trader
+            if (player.followingTrader) {
+                const tPos = player.followingTrader.group.position;
+                const desiredPos = new THREE.Vector3(tPos.x + 4.5, 3.2, tPos.z + 4.5);
+                player.position.lerp(desiredPos, Math.min(1, dt * 3.5));
+
+                const lookDir = new THREE.Vector3().subVectors(
+                    new THREE.Vector3(tPos.x, 2.0, tPos.z),
+                    player.position
+                ).normalize();
+                player.targetYaw = Math.atan2(-lookDir.x, -lookDir.z);
+                player.targetPitch = Math.asin(lookDir.y);
+            }
+
+            // 2. Haluskan rotasi kamera (Damping)
+            const rotLerp = Math.min(1, dt * 14);
+            player.yaw += (player.targetYaw - player.yaw) * rotLerp;
+            player.pitch += (player.targetPitch - player.pitch) * rotLerp;
+
+            camera.rotation.y = player.yaw;
+            camera.rotation.x = player.pitch;
+
+            // 3. Hitung vektor arah maju & samping berdasarkan arah pandang horizontal kamera
+            const forwardVec = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+            const rightVec = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+
+            let moveForward = (keys.forward ? 1 : 0) - (keys.backward ? 1 : 0) - joystick.y;
+            let moveRight = (keys.right ? 1 : 0) - (keys.left ? 1 : 0) + joystick.x;
+            let moveUp = (keys.up ? 1 : 0) - (keys.down ? 1 : 0);
+
+            // Normalisasi jika bergerak diagonal
+            const horizMag = Math.hypot(moveForward, moveRight);
+            if (horizMag > 1) {
+                moveForward /= horizMag;
+                moveRight /= horizMag;
+            }
+
+            const speed = player.baseSpeed * (keys.turbo ? player.turboMultiplier : 1);
+            const targetVel = new THREE.Vector3();
+            targetVel.addScaledVector(forwardVec, moveForward * speed);
+            targetVel.addScaledVector(rightVec, moveRight * speed);
+            targetVel.y = moveUp * (speed * 0.85);
+
+            // Jika terbang tinggi dan menekan maju, tambahkan sedikit dorongan vertikal mengikuti arah pandang kamera agar terasa seperti terbang pesawat/drone!
+            if (player.position.y > 4.5 && Math.abs(moveForward) > 0.1 && moveUp === 0) {
+                targetVel.y += Math.sin(player.pitch) * moveForward * (speed * 0.65);
+            }
+
+            // Inersia halus
+            player.velocity.lerp(targetVel, Math.min(1, dt * 8));
+            player.position.addScaledVector(player.velocity, dt);
+
+            // Batasi area eksplorasi kota agar tidak tersesat keluar peta
+            player.position.x = Math.max(-220, Math.min(220, player.position.x));
+            player.position.z = Math.max(-220, Math.min(220, player.position.z));
+            player.position.y = Math.max(player.minHeight, Math.min(player.maxHeight, player.position.y));
+
+            camera.position.copy(player.position);
+
+            // Perbarui indikator ketinggian di HUD
+            const altBadge = document.getElementById('altitude-badge');
+            if (altBadge) {
+                const alt = player.position.y;
+                const modeLabel = alt > 4.5 ? 'Terbang 🦅' : 'Jalan 🚶';
+                altBadge.textContent = `Ketinggian: ${alt.toFixed(1)}m (${modeLabel})`;
+            }
+        }
+
+        function updateStickMen(dt, elapsed) {
+            stickMen.forEach((s) => {
+                // Jika sedang selebrasi / melambaikan tangan
+                if (s.celebrateTimer > 0) {
+                    s.celebrateTimer -= dt;
+                    // Lompat kecil & angkat kedua tangan
+                    s.group.position.y = 0.3 + Math.abs(Math.sin(elapsed * 10 + s.id)) * 0.35;
+                    s.leftArmPivot.rotation.z = -2.4 + Math.sin(elapsed * 14) * 0.3;
+                    s.rightArmPivot.rotation.z = 2.4 - Math.sin(elapsed * 14) * 0.3;
+                    s.leftLegPivot.rotation.x = 0;
+                    s.rightLegPivot.rotation.x = 0;
+                    return;
+                }
+
+                s.group.position.y = 0.3;
+                s.leftArmPivot.rotation.z = 0;
+                s.rightArmPivot.rotation.z = 0;
+
+                // Berjalan menuju targetPos
+                const toTarget = new THREE.Vector3().subVectors(s.targetPos, s.group.position);
+                toTarget.y = 0;
+                const dist = toTarget.length();
+
+                if (dist < 1.2) {
+                    // Pilih titik tujuan baru di dalam kota
+                    const nextAng = Math.random() * Math.PI * 2;
+                    const nextDist = 8 + Math.random() * 65;
+                    s.targetPos.set(Math.cos(nextAng) * nextDist, 0.3, Math.sin(nextAng) * nextDist);
+                } else {
+                    toTarget.normalize();
+                    s.group.position.addScaledVector(toTarget, s.walkSpeed * dt);
+
+                    // Putar tubuh menghadap arah jalan dengan mulus
+                    const desiredRot = Math.atan2(toTarget.x, toTarget.z);
+                    s.group.rotation.y = desiredRot;
+
+                    // Animasi ayunan kaki & lengan Stick-Man
+                    s.walkPhase += dt * s.walkSpeed * 3.6;
+                    const swing = Math.sin(s.walkPhase) * 0.55;
+                    s.leftLegPivot.rotation.x = swing;
+                    s.rightLegPivot.rotation.x = -swing;
+                    s.leftArmPivot.rotation.x = -swing * 0.6;
+                    s.rightArmPivot.rotation.x = swing * 0.6;
+                }
+            });
+        }
+
+        function updateCityAnimations(dt, elapsed) {
+            // Putar koin & cincin hologram pusat bursa
+            if (centralCoinMesh) centralCoinMesh.rotation.y += dt * 1.1;
+            if (centralHoloRing) {
+                centralHoloRing.rotation.z += dt * 0.8;
+                centralHoloRing.rotation.y -= dt * 0.5;
+            }
+
+            // Animasi lilin candlestick 3D di monumen pusat
+            candleMeshes.forEach((c) => {
+                const wave = Math.sin(elapsed * 2.2 + c.phase);
+                const scaleY = 0.75 + Math.abs(wave) * 0.65;
+                c.body.scale.y = scaleY;
+                c.group.position.y = 2.6 + wave * 0.45;
+            });
+
+            // Animasi drone terbang mengitari gedung pencakar langit
+            flyingDrones.forEach((d) => {
+                d.angle += d.speed * dt;
+                d.mesh.position.x = Math.cos(d.angle) * d.radius;
+                d.mesh.position.z = Math.sin(d.angle) * d.radius;
+                d.mesh.position.y = d.altitude + Math.sin(elapsed * 2 + d.angle) * 1.2;
+                d.mesh.rotation.y = -d.angle;
+            });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const dt = Math.min(clock.getDelta(), 0.05);
+            const elapsed = clock.getElapsedTime();
+
+            updatePlayerMovement(dt);
+            updateStickMen(dt, elapsed);
+            updateCityAnimations(dt, elapsed);
+
+            renderer.render(scene, camera);
+        }
+
+        // Mulai simulasi saat seluruh halaman selesai dimuat
+        window.onload = function () {
+            init();
+            animate();
+        };
+    </script>
+</body>
+</html>
