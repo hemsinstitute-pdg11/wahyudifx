@@ -1,0 +1,10 @@
+{
+  "name": "wahyudifx-market-city",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Read-only Twelve Data market stream proxy for WahyudiFX 3D educational simulation",
+  "main": "server.js",
+  "scripts": { "start": "node server.js", "check": "node --check server.js" },
+  "engines": { "node": ">=20" },
+  "dependencies": { "ws": "^8.18.3" }
+}
