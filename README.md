@@ -3,7 +3,7 @@
 A read-only educational 3D market-data visualization. It does not connect to a broker, accept orders, or execute transactions.
 
 ## Market data
-Configured Twelve Data symbols: XAU/USD, EUR/USD, GBP/USD, USD/JPY, BTC/USD, ETH/USD, XAG/USD.
+Configured Twelve Data symbols: XAU/USD, EUR/USD, GBP/USD, USD/JPY, BTC/USD, ETH/USD, XAG/USD. Each subscribed symbol consumes one WebSocket credit (seven credits total), subject to the account's plan and symbol entitlements. Gold/silver commodity stream availability must be checked for the selected plan.
 
 The Node.js server keeps the provider API key private, maintains one upstream WebSocket connection per server process, and broadcasts approved price events to browser sessions.
 
