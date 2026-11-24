@@ -1,4 +1,4 @@
-# WahyudiFX Academy
+# WahyudiFX 
 
 A public, dark-mode trading education website focused on market fundamentals and technical analysis.
 
